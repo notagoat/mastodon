@@ -1,0 +1,89 @@
+==================================================================
+https://keybase.io/notagoat
+--------------------------------------------------------------------
+
+I hereby claim:
+
+  * I am an admin of https://hellsite.site
+  * I am notagoat (https://keybase.io/notagoat) on keybase.
+  * I have a public key with fingerprint AB45 1C05 9AD4 3C9F 7944  BBE6 A1B2 DFDB E4AB C9FA
+
+To do so, I am signing this object:
+
+{
+  "body": {
+    "key": {
+      "eldest_kid": "01019dd6084b933668e1e0b771110f5ade3057912a8eda830f27ff75d55372a1b6590a",
+      "fingerprint": "ab451c059ad43c9f7944bbe6a1b2dfdbe4abc9fa",
+      "host": "keybase.io",
+      "key_id": "a1b2dfdbe4abc9fa",
+      "kid": "01016bd408465a5b267ba88cf9302c1e0b96dce6acad7fbfd41e9d23308e4f6f0d0d0a",
+      "uid": "8e7065e1a8771c8bee91db0c58c11c19",
+      "username": "notagoat"
+    },
+    "merkle_root": {
+      "ctime": 1555323154,
+      "hash_meta": "76365ec7a2c2a3c1edd6b574bf2b66caf0f48a22afef30f7cbc523e2d59da97d",
+      "seqno": 5169352
+    },
+    "revoke": {
+      "sig_ids": [
+        "804c0823834bc5dbbde810e9da4f3199e59d8a493cffdfc583c9ed8d180b37590f"
+      ]
+    },
+    "service": {
+      "hostname": "hellsite.site",
+      "protocol": "https:"
+    },
+    "type": "web_service_binding",
+    "version": 1
+  },
+  "ctime": 1555323156,
+  "expire_in": 157680000,
+  "prev": "1a339addbbb66b4bff9b896ca213914b24099f7b293a278effc4f5940c6659cf",
+  "seqno": 74,
+  "tag": "signature"
+}
+
+which yields the signature:
+
+-----BEGIN PGP MESSAGE-----
+Version: Keybase OpenPGP v2.1.0
+Comment: https://keybase.io/crypto
+
+yMP9AnicbZMJbBRVGMe3iyWlIKAhsQYwMopKKXXe3K80ICBgMGAFhDYFN+9sh93u
+tLvDlrbUBqgItFpCuWq8GrkJlMMCijGUU1spFlFEzhQI5RKksYGCwTcNhsQ4k8xk
+3nzf//t/v++9g0928yXG1e44f/rS5h8645r2F872zfgqq1+JhB1aJKWVSEHW9WIh
+yqJuIGhTKU2SgQwgpYZsaRiqqmFYDDAZmyYAQOY6okyVdRMCBVmMIkuVuWJybupU
+11VTQQAbOpSRlCJxO5zDIvkRO+wKWYQ1HRBZh4hqKoHchJqGMTNEgkI5xUxDWCx7
+iblO1MsQ5jCKslTbEWviI9Bl73/iH/s2MNWEb0NHOlYMEyPLIhyqskK8FqBBiShI
+EDU55lQDDFJFVWWLadzgMhW3Jze7S85ipmzoDCBLdE4szBgEFMtEtwgABEAvMMoi
+YZTHRHTYcVGOg1ypNEXKY5FgiAUijuN6cIlreyFAF3wUFeiaaBBFcwN5zEUi0zRU
+UYaYSCEKUoVPgR7rpoa5gg2DIC5zzUKKgjjjgrVJMNEVlSlUhxRBkwofUVYQdqQ0
+HRhQ1RXhIMJiTpB5xaN2jsAWldKyJUvWiGwpqqVqQoJiTJkFZIEAaVwFEDIhaCEN
+qoRzykWfYkqMWhRYMlZNMVMuzSz1ikViNukS9+b0qP9cFgpFbZeleg9hKT/iuA5x
+Qt4v182Ppnlg3KJ8L7aQ4cAjlQC2w1RsE5ERY5Go7YQFKBH5X2ZGisTm5NsRFrC9
+CN00LFlcXh0WE5IAqarYWKIpwQwLdhxiCwp6ClAh0LCiyVBsOaxAFSmmxTgnGteh
+JhND7FbCH0M0xXjEKIWmQBdG7uwIk0r3N8x4wheX6Ose7/fOjy+xR99/T1V8WZ+/
++8IZ1xfb55bDtnGpK8rmr4ZvHGWT264dbp7ktJ2J4Ku+FXFD3xy2t/gMfTi25tWp
+X/ecGFzZ+dHWP++jmg/H7Yovu/FCetsvWVkbwLFRtd+vHZ4woeapeRvL26+/s7N4
+SsORsSX33n26bXRSbvOt54vPJE3LnJleGizftahjgl5fd0K/MbIywzhfYS/plzym
+YHFywoJn7+wv+rUxVl/Z54+60fW1iTyzzq1cN35Z6k+0//Tb84YnXDsYW5X33uAf
+N7xff6zsflPWttH3CyYW00PG3ND6so3unC33bjbvGZvsZHRUf/lx7ItVE6EvY097
+S/aQI5lX/b0+uZE0/fPOSetuXriiBtILT5yH5c1k6enO7EOTd859sbW9dcz44UvW
+NIGG7j6tsW5z6M6FHP8aa0uv1wdUNLal7utRefbg9t8r9Njd7YOLhw2SUv3zXyGb
+ZoVvXzo+IFq1qMXfEPS3x6fcGXoxe8i56n1TAgPtv8rP/vYwp3VT3BVn+zeZu54Z
+cWrEmqoDtYtmXa7dum3phJzux3c8bLqccfilnysftOgrp3UcGbrn6qEVvvKi+cdO
+jjmwo/ewgTWLHyQfX9hnbcfLU68fsBYWrXwt6+7JUSX55qD6hA92V08ZVTRydfPb
+2/z99164lXSq1aro2fjd7oaCiws2VvOMwufuXtq9fiud26134LOBn9YcbTo8Nf3b
+Fteoyn1rmT+8fMA/joMUJQ==
+=+iz5
+-----END PGP MESSAGE-----
+
+And finally, I am proving ownership of this host by posting or
+appending to this document.
+
+View my publicly-auditable identity here: https://keybase.io/notagoat
+
+==================================================================
+
