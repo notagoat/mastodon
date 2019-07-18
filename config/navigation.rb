@@ -10,7 +10,12 @@ SimpleNavigation::Configuration.run do |navigation|
       s.item :identity_proofs, safe_join([fa_icon('key fw'), t('settings.identity_proofs')]), settings_identity_proofs_path, highlights_on: %r{/settings/identity_proofs*}, if: proc { current_account.identity_proofs.exists? }
     end
 
-    n.item :preferences, safe_join([fa_icon('cog fw'), t('settings.preferences')]), settings_preferences_url, highlights_on: %r{/settings/preferences|/settings/notifications}
+    n.item :preferences, safe_join([fa_icon('cog fw'), t('settings.preferences')]), settings_preferences_url do |s|
+      s.item :appearance, safe_join([fa_icon('desktop fw'), t('settings.appearance')]), settings_preferences_appearance_url
+      s.item :notifications, safe_join([fa_icon('bell fw'), t('settings.notifications')]), settings_preferences_notifications_url
+      s.item :other, safe_join([fa_icon('cog fw'), t('preferences.other')]), settings_preferences_other_url
+    end
+
     n.item :relationships, safe_join([fa_icon('users fw'), t('settings.relationships')]), relationships_url
     n.item :filters, safe_join([fa_icon('filter fw'), t('filters.index.title')]), filters_path, highlights_on: %r{/filters}
 
@@ -43,7 +48,6 @@ SimpleNavigation::Configuration.run do |navigation|
       s.item :settings, safe_join([fa_icon('cogs fw'), t('admin.settings.title')]), edit_admin_settings_url, if: -> { current_user.admin? }, highlights_on: %r{/admin/settings}
       s.item :custom_emojis, safe_join([fa_icon('smile-o fw'), t('admin.custom_emojis.title')]), admin_custom_emojis_url, highlights_on: %r{/admin/custom_emojis}
       s.item :relays, safe_join([fa_icon('exchange fw'), t('admin.relays.title')]), admin_relays_url, if: -> { current_user.admin? }, highlights_on: %r{/admin/relays}
-      s.item :subscriptions, safe_join([fa_icon('paper-plane-o fw'), t('admin.subscriptions.title')]), admin_subscriptions_url, if: -> { current_user.admin? }
       s.item :sidekiq, safe_join([fa_icon('diamond fw'), 'Sidekiq']), sidekiq_url, link_html: { target: 'sidekiq' }, if: -> { current_user.admin? }
       s.item :pghero, safe_join([fa_icon('database fw'), 'PgHero']), pghero_url, link_html: { target: 'pghero' }, if: -> { current_user.admin? }
     end

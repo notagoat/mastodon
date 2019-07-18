@@ -45,6 +45,7 @@
 #  also_known_as           :string           is an Array
 #  silenced_at             :datetime
 #  suspended_at            :datetime
+#  trust_level             :integer
 #
 
 class Account < ApplicationRecord
@@ -62,6 +63,11 @@ class Account < ApplicationRecord
   include AccountCounters
   include DomainNormalizable
 
+  TRUST_LEVELS = {
+    untrusted: 0,
+    trusted: 1,
+  }.freeze
+
   enum protocol: [:ostatus, :activitypub]
 
   validates :username, presence: true
@@ -75,7 +81,7 @@ class Account < ApplicationRecord
   validates_with UniqueUsernameValidator, if: -> { local? && will_save_change_to_username? }
   validates_with UnreservedUsernameValidator, if: -> { local? && will_save_change_to_username? }
   validates :display_name, length: { maximum: 30 }, if: -> { local? && will_save_change_to_display_name? }
-  validates :note, note_length: { maximum: 160 }, if: -> { local? && will_save_change_to_note? }
+  validates :note, note_length: { maximum: 500 }, if: -> { local? && will_save_change_to_note? }
   validates :fields, length: { maximum: 4 }, if: -> { local? && will_save_change_to_fields? }
 
   scope :remote, -> { where.not(domain: nil) }
@@ -98,6 +104,7 @@ class Account < ApplicationRecord
   scope :tagged_with, ->(tag) { joins(:accounts_tags).where(accounts_tags: { tag_id: tag }) }
   scope :by_recent_status, -> { order(Arel.sql('(case when account_stats.last_status_at is null then 1 else 0 end) asc, account_stats.last_status_at desc')) }
   scope :popular, -> { order('account_stats.followers_count desc') }
+  scope :by_domain_and_subdomains, ->(domain) { where(domain: domain).or(where(arel_table[:domain].matches('%.' + domain))) }
 
   delegate :email,
            :unconfirmed_email,
@@ -106,6 +113,8 @@ class Account < ApplicationRecord
            :confirmed?,
            :approved?,
            :pending?,
+           :disabled?,
+           :role,
            :admin?,
            :moderator?,
            :staff?,
@@ -160,30 +169,31 @@ class Account < ApplicationRecord
     last_webfingered_at.nil? || last_webfingered_at <= 1.day.ago
   end
 
+  def trust_level
+    self[:trust_level] || 0
+  end
+
   def refresh!
-    return if local?
-    ResolveAccountService.new.call(acct)
+    ResolveAccountService.new.call(acct) unless local?
   end
 
   def silenced?
     silenced_at.present?
   end
 
-  def silence!(date = nil)
-    date ||= Time.now.utc
+  def silence!(date = Time.now.utc)
     update!(silenced_at: date)
   end
 
   def unsilence!
-    update!(silenced_at: nil)
+    update!(silenced_at: nil, trust_level: trust_level == TRUST_LEVELS[:untrusted] ? TRUST_LEVELS[:trusted] : trust_level)
   end
 
   def suspended?
     suspended_at.present?
   end
 
-  def suspend!(date = nil)
-    date ||= Time.now.utc
+  def suspend!(date = Time.now.utc)
     transaction do
       user&.disable! if local?
       update!(suspended_at: date)
@@ -202,6 +212,10 @@ class Account < ApplicationRecord
       user&.disable! if local?
       update!(memorial: true)
     end
+  end
+
+  def sign?
+    true
   end
 
   def keypair
@@ -285,21 +299,6 @@ class Account < ApplicationRecord
     end
 
     self.fields = tmp
-  end
-
-  def magic_key
-    modulus, exponent = [keypair.public_key.n, keypair.public_key.e].map do |component|
-      result = []
-
-      until component.zero?
-        result << [component % 256].pack('C')
-        component >>= 8
-      end
-
-      result.reverse.join
-    end
-
-    (['RSA'] + [modulus, exponent].map { |n| Base64.urlsafe_encode64(n) }).join('.')
   end
 
   def subscription(webhook_url)
