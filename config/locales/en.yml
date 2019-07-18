@@ -174,6 +174,7 @@ en:
       statuses: Statuses
       subscribe: Subscribe
       suspended: Suspended
+      time_in_queue: Waiting in queue %{time}
       title: Accounts
       unconfirmed_email: Unconfirmed email
       undo_silenced: Undo silence
@@ -249,6 +250,7 @@ en:
       feature_profile_directory: Profile directory
       feature_registrations: Registrations
       feature_relay: Federation relay
+      feature_spam_check: Anti-spam
       feature_timeline_preview: Timeline preview
       features: Features
       hidden_service: Federation with hidden services
@@ -448,6 +450,9 @@ en:
         desc_html: You can write your own privacy policy, terms of service or other legalese. You can use HTML tags
         title: Custom terms of service
       site_title: Server name
+      spam_check_enabled:
+        desc_html: Mastodon can auto-silence and auto-report accounts based on measures such as detecting accounts who send repeated unsolicited messages. There may be false positives.
+        title: Anti-spam
       thumbnail:
         desc_html: Used for previews via OpenGraph and API. 1200x630px recommended
         title: Server thumbnail
@@ -468,13 +473,6 @@ en:
       no_status_selected: No statuses were changed as none were selected
       title: Account statuses
       with_media: With media
-    subscriptions:
-      callback_url: Callback URL
-      confirmed: Confirmed
-      expires_in: Expires in
-      last_delivery: Last delivery
-      title: WebSub
-      topic: Topic
     tags:
       accounts: Accounts
       hidden: Hidden
@@ -498,6 +496,12 @@ en:
       body: "%{reporter} has reported %{target}"
       body_remote: Someone from %{domain} has reported %{target}
       subject: New report for %{instance} (#%{id})
+  appearance:
+    advanced_web_interface: Advanced web interface
+    advanced_web_interface_hint: 'If you want to make use of your entire screen width, the advanced web interface allows you to configure many different columns to see as much information at the same time as you want: Home, notifications, federated timeline, any number of lists and hashtags.'
+    animations_and_accessibility: Animations and accessibility
+    confirmation_dialogs: Confirmation dialogs
+    sensitive_content: Sensitive content
   application_mailer:
     notification_preferences: Change e-mail preferences
     salutation: "%{name},"
@@ -777,10 +781,9 @@ en:
       too_few_options: must have more than one item
       too_many_options: can't contain more than %{max} items
   preferences:
-    languages: Languages
     other: Other
-    publishing: Publishing
-    web: Web
+    posting_defaults: Posting defaults
+    public_timelines: Public timelines
   relationships:
     activity: Account activity
     dormant: Dormant
@@ -811,10 +814,6 @@ en:
     reply:
       proceed: Proceed to reply
       prompt: 'You want to reply to this toot:'
-  remote_unfollow:
-    error: Error
-    title: Title
-    unfollowed: Unfollowed
   scheduled_statuses:
     over_daily_limit: You have exceeded the limit of %{limit} scheduled toots for that day
     over_total_limit: You have exceeded the limit of %{limit} scheduled toots
@@ -880,6 +879,8 @@ en:
     profile: Profile
     relationships: Follows and followers
     two_factor_authentication: Two-factor Auth
+  spam_check:
+    spam_detected_and_silenced: This is an automated report. Spam has been detected and the sender has been silenced automatically. If this is a mistake, please unsilence the account.
   statuses:
     attached:
       description: 'Attached: %{attached}'
