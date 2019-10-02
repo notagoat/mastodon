@@ -26,7 +26,7 @@ export default function soundsMiddleware() {
   const soundCache = {
     boop: createAudio([
       {
-        src: '/sounds/boop.ogg',
+        src: '/sounds/Honk3.ogg',
         type: 'audio/ogg',
       },
       {
