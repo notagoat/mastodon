@@ -42,7 +42,7 @@ en:
     what_is_mastodon: What is Mastodon?
   accounts:
     choices_html: "%{name}'s choices:"
-    follow: Follow
+    follow: UWU
     followers:
       one: Follower
       other: Followers
@@ -59,10 +59,10 @@ en:
     pin_errors:
       following: You must be already following the person you want to endorse
     posts:
-      one: Toot
-      other: Toots
-    posts_tab_heading: Toots
-    posts_with_replies: Toots and replies
+      one: FART
+      other: FARTS
+    posts_tab_heading: Fart
+    posts_with_replies: Farts
     reserved_username: The username is reserved
     roles:
       admin: Admin
@@ -182,7 +182,7 @@ en:
       unsubscribe: Unsubscribe
       username: Username
       warn: Warn
-      web: Web
+      web: Test
     action_logs:
       actions:
         assigned_to_self_report: "%{name} assigned report %{target} to themselves"

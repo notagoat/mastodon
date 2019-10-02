@@ -203,7 +203,7 @@ export function submitComposeFail(error) {
 
 export function uploadCompose(files) {
   return function (dispatch, getState) {
-    const uploadLimit = 4;
+    const uploadLimit = 10;
     const media  = getState().getIn(['compose', 'media_attachments']);
     const progress = new Array(files.length).fill(0);
     let total = Array.from(files).reduce((a, v) => a + v.size, 0);
@@ -213,10 +213,10 @@ export function uploadCompose(files) {
       return;
     }
 
-    if (getState().getIn(['compose', 'poll'])) {
-      dispatch(showAlert(undefined, messages.uploadErrorPoll));
-      return;
-    }
+    //if (getState().getIn(['compose', 'poll'])) {
+    //  dispatch(showAlert(undefined, messages.uploadErrorPoll));
+    //  return;
+    //}
 
     dispatch(uploadComposeRequest());
 

@@ -125,7 +125,7 @@ en:
         must_be_following: Block notifications from people you don't follow
         must_be_following_dm: Block direct messages from people you don't follow
       invite_request:
-        text: Why do you want to join?
+        text: Why do you want to join hellsite.site? Please link any past mastodon accounts as this helps the moderation team accept your application. Give us one interesting fact to prove you're not a robot / spammer.
       notification_emails:
         digest: Send digest e-mails
         favourite: Send e-mail when someone favourites your status
