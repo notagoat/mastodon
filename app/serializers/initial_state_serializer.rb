@@ -2,11 +2,15 @@
 
 class InitialStateSerializer < ActiveModel::Serializer
   attributes :meta, :compose, :accounts,
-             :media_attachments, :settings
+             :media_attachments, :settings, :max_toot_chars
 
   has_one :push_subscription, serializer: REST::WebPushSubscriptionSerializer
 
-  def meta
+ def max_toot_chars
+   StatusLengthValidator::MAX_CHARS 
+ end
+  
+ def meta
     store = {
       streaming_api_base_url: Rails.configuration.x.streaming_api_base_url,
       access_token: object.token,

@@ -22,5 +22,6 @@ export const isStaff = getMeta('is_staff');
 export const forceSingleColumn = !getMeta('advanced_layout');
 export const useBlurhash = getMeta('use_blurhash');
 export const usePendingItems = getMeta('use_pending_items');
+export const maxChars = getMeta('max_toot_chars') || 69420;
 
 export default initialState;
