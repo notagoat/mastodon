@@ -22,7 +22,7 @@ export function normalizeAccount(account) {
   if (account.fields) {
     account.fields = account.fields.map(pair => ({
       ...pair,
-      name_emojified: emojify(escapeTextContentForBrowser(pair.name)),
+      name_emojified: emojify(escapeTextContentForBrowser(pair.name), emojiMap),
       value_emojified: emojify(pair.value, emojiMap),
       value_plain: unescapeHTML(pair.value),
     }));
@@ -73,8 +73,9 @@ export function normalizePoll(poll) {
 
   const emojiMap = makeEmojiMap(normalPoll);
 
-  normalPoll.options = poll.options.map(option => ({
+  normalPoll.options = poll.options.map((option, index) => ({
     ...option,
+    voted: poll.own_votes && poll.own_votes.includes(index),
     title_emojified: emojify(escapeTextContentForBrowser(option.title), emojiMap),
   }));
 

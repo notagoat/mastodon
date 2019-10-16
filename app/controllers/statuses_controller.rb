@@ -18,6 +18,9 @@ class StatusesController < ApplicationController
   before_action :set_body_classes
   before_action :set_autoplay, only: :embed
 
+  skip_around_action :set_locale, if: -> { request.format == :json }
+  skip_before_action :require_functional!, only: [:show, :embed]
+
   content_security_policy only: :embed do |p|
     p.frame_ancestors(false)
   end
@@ -32,14 +35,14 @@ class StatusesController < ApplicationController
 
       format.json do
         expires_in 3.minutes, public: @status.distributable? && public_fetch_mode?
-        render json: @status, content_type: 'application/activity+json', serializer: ActivityPub::NoteSerializer, adapter: ActivityPub::Adapter
+        render_with_cache json: @status, content_type: 'application/activity+json', serializer: ActivityPub::NoteSerializer, adapter: ActivityPub::Adapter
       end
     end
   end
 
   def activity
     expires_in 3.minutes, public: @status.distributable? && public_fetch_mode?
-    render json: @status, content_type: 'application/activity+json', serializer: ActivityPub::ActivitySerializer, adapter: ActivityPub::Adapter
+    render_with_cache json: @status, content_type: 'application/activity+json', serializer: ActivityPub::ActivitySerializer, adapter: ActivityPub::Adapter
   end
 
   def embed

@@ -11,7 +11,7 @@ class ActivityPub::CollectionsController < ActivityPub::BaseController
 
   def show
     expires_in 3.minutes, public: public_fetch_mode?
-    render json: collection_presenter, content_type: 'application/activity+json', serializer: ActivityPub::CollectionSerializer, adapter: ActivityPub::Adapter, skip_activities: true
+    render_with_cache json: collection_presenter, content_type: 'application/activity+json', serializer: ActivityPub::CollectionSerializer, adapter: ActivityPub::Adapter, skip_activities: true
   end
 
   private
@@ -33,9 +33,9 @@ class ActivityPub::CollectionsController < ActivityPub::BaseController
   def scope_for_collection
     case params[:id]
     when 'featured'
-      @account.statuses.permitted_for(@account, signed_request_account).tap do |scope|
-        scope.merge!(@account.pinned_statuses)
-      end
+      return Status.none if @account.blocking?(signed_request_account)
+
+      @account.pinned_statuses
     else
       raise ActiveRecord::RecordNotFound
     end

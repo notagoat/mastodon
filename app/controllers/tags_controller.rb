@@ -8,19 +8,17 @@ class TagsController < ApplicationController
   layout 'public'
 
   before_action :require_signature!, if: -> { request.format == :json && authorized_fetch_mode? }
+  before_action :authenticate_user!, if: :whitelist_mode?
   before_action :set_tag
   before_action :set_body_classes
   before_action :set_instance_presenter
+
+  skip_before_action :require_functional!
 
   def show
     respond_to do |format|
       format.html do
         expires_in 0, public: true
-
-        @initial_state_json = ActiveModelSerializers::SerializableResource.new(
-          InitialStatePresenter.new(settings: {}, token: current_session&.token),
-          serializer: InitialStateSerializer
-        ).to_json
       end
 
       format.rss do
@@ -46,7 +44,7 @@ class TagsController < ApplicationController
   private
 
   def set_tag
-    @tag = Tag.find_normalized!(params[:id])
+    @tag = Tag.usable.find_normalized!(params[:id])
   end
 
   def set_body_classes

@@ -51,7 +51,6 @@
 class Account < ApplicationRecord
   USERNAME_RE = /[a-z0-9_]+([a-z0-9_\.-]+[a-z0-9_]+)?/i
   MENTION_RE  = /(?<=^|[^\/[:word:]])@((#{USERNAME_RE})(?:@[a-z0-9\.\-]+[a-z0-9]+)?)/i
-  MIN_FOLLOWERS_DISCOVERY = 10
 
   include AccountAssociations
   include AccountAvatar
@@ -77,7 +76,7 @@ class Account < ApplicationRecord
   validates :username, format: { with: /\A#{USERNAME_RE}\z/i }, if: -> { !local? && will_save_change_to_username? }
 
   # Local user validations
-  validates :username, format: { with: /\A[a-z0-9_]+\z/i }, length: { maximum: 30 }, if: -> { local? && will_save_change_to_username? }
+  validates :username, format: { with: /\A[a-z0-9_]+\z/i }, length: { maximum: 30 }, if: -> { local? && will_save_change_to_username? && actor_type != 'Application' }
   validates_with UniqueUsernameValidator, if: -> { local? && will_save_change_to_username? }
   validates_with UnreservedUsernameValidator, if: -> { local? && will_save_change_to_username? }
   validates :display_name, length: { maximum: 30 }, if: -> { local? && will_save_change_to_display_name? }
@@ -100,11 +99,13 @@ class Account < ApplicationRecord
   scope :matches_display_name, ->(value) { where(arel_table[:display_name].matches("#{value}%")) }
   scope :matches_domain, ->(value) { where(arel_table[:domain].matches("%#{value}%")) }
   scope :searchable, -> { without_suspended.where(moved_to_account_id: nil) }
-  scope :discoverable, -> { searchable.without_silenced.where(discoverable: true).joins(:account_stat).where(AccountStat.arel_table[:followers_count].gteq(MIN_FOLLOWERS_DISCOVERY)) }
+  scope :discoverable, -> { searchable.without_silenced.where(discoverable: true).left_outer_joins(:account_stat) }
   scope :tagged_with, ->(tag) { joins(:accounts_tags).where(accounts_tags: { tag_id: tag }) }
-  scope :by_recent_status, -> { order(Arel.sql('(case when account_stats.last_status_at is null then 1 else 0 end) asc, account_stats.last_status_at desc')) }
+  scope :by_recent_status, -> { order(Arel.sql('(case when account_stats.last_status_at is null then 1 else 0 end) asc, account_stats.last_status_at desc, accounts.id desc')) }
   scope :popular, -> { order('account_stats.followers_count desc') }
   scope :by_domain_and_subdomains, ->(domain) { where(domain: domain).or(where(arel_table[:domain].matches('%.' + domain))) }
+  scope :not_excluded_by_account, ->(account) { where.not(id: account.excluded_from_timeline_account_ids) }
+  scope :not_domain_blocked_by_account, ->(account) { where(arel_table[:domain].eq(nil).or(arel_table[:domain].not_in(account.excluded_from_timeline_domains))) }
 
   delegate :email,
            :unconfirmed_email,
@@ -114,6 +115,7 @@ class Account < ApplicationRecord
            :approved?,
            :pending?,
            :disabled?,
+           :unconfirmed_or_pending?,
            :role,
            :admin?,
            :moderator?,
@@ -127,6 +129,8 @@ class Account < ApplicationRecord
 
   delegate :chosen_languages, to: :user, prefix: false, allow_nil: true
 
+  update_index('accounts#account', :self)
+
   def local?
     domain.nil?
   end
@@ -137,6 +141,10 @@ class Account < ApplicationRecord
 
   def bot?
     %w(Application Service).include? actor_type
+  end
+
+  def instance_actor?
+    id == -99
   end
 
   alias bot bot?
@@ -165,6 +173,10 @@ class Account < ApplicationRecord
     subscription_expires_at.present?
   end
 
+  def searchable?
+    !(suspended? || moved?)
+  end
+
   def possibly_stale?
     last_webfingered_at.nil? || last_webfingered_at <= 1.day.ago
   end
@@ -186,7 +198,7 @@ class Account < ApplicationRecord
   end
 
   def unsilence!
-    update!(silenced_at: nil, trust_level: trust_level == TRUST_LEVELS[:untrusted] ? TRUST_LEVELS[:trusted] : trust_level)
+    update!(silenced_at: nil)
   end
 
   def suspended?
@@ -223,17 +235,7 @@ class Account < ApplicationRecord
   end
 
   def tags_as_strings=(tag_names)
-    tag_names.map! { |name| name.mb_chars.downcase.to_s }
-    tag_names.uniq!
-
-    # Existing hashtags
-    hashtags_map = Tag.where(name: tag_names).each_with_object({}) { |tag, h| h[tag.name] = tag }
-
-    # Initialize not yet existing hashtags
-    tag_names.each do |name|
-      next if hashtags_map.key?(name)
-      hashtags_map[name] = Tag.new(name: name)
-    end
+    hashtags_map = Tag.find_or_create_by_names(tag_names).each_with_object({}) { |tag, h| h[tag.name] = tag }
 
     # Remove hashtags that are to be deleted
     tags.each do |tag|
@@ -308,10 +310,9 @@ class Account < ApplicationRecord
   def save_with_optional_media!
     save!
   rescue ActiveRecord::RecordInvalid
-    self.avatar              = nil
-    self.header              = nil
-    self[:avatar_remote_url] = ''
-    self[:header_remote_url] = ''
+    self.avatar = nil
+    self.header = nil
+
     save!
   end
 
@@ -498,7 +499,7 @@ class Account < ApplicationRecord
   end
 
   def generate_keys
-    return unless local? && !Rails.env.test?
+    return unless local? && private_key.blank? && public_key.blank?
 
     keypair = OpenSSL::PKey::RSA.new(2048)
     self.private_key = keypair.to_pem
@@ -512,7 +513,7 @@ class Account < ApplicationRecord
   end
 
   def emojifiable_text
-    [note, display_name, fields.map(&:value)].join(' ')
+    [note, display_name, fields.map(&:name), fields.map(&:value)].join(' ')
   end
 
   def clean_feed_manager

@@ -4,7 +4,9 @@ class MediaController < ApplicationController
   include Authorization
 
   skip_before_action :store_current_location
+  skip_before_action :require_functional!
 
+  before_action :authenticate_user!, if: :whitelist_mode?
   before_action :set_media_attachment
   before_action :verify_permitted_status!
   before_action :check_playable, only: :player
