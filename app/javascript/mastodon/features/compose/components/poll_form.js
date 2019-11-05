@@ -13,6 +13,7 @@ const messages = defineMessages({
   add_option: { id: 'compose_form.poll.add_option', defaultMessage: 'Add a choice' },
   remove_option: { id: 'compose_form.poll.remove_option', defaultMessage: 'Remove this choice' },
   poll_duration: { id: 'compose_form.poll.duration', defaultMessage: 'Poll duration' },
+  seconds: { id: 'intervals.full.seconds', defaultMessage: '{number, plural, one {# second} other {# seconds}}' },
   minutes: { id: 'intervals.full.minutes', defaultMessage: '{number, plural, one {# minute} other {# minutes}}' },
   hours: { id: 'intervals.full.hours', defaultMessage: '{number, plural, one {# hour} other {# hours}}' },
   days: { id: 'intervals.full.days', defaultMessage: '{number, plural, one {# day} other {# days}}' },
@@ -78,7 +79,7 @@ class Option extends React.PureComponent {
 
           <AutosuggestInput
             placeholder={intl.formatMessage(messages.option_placeholder, { number: index + 1 })}
-            maxLength={25}
+            maxLength={100}
             value={title}
             onChange={this.handleOptionTitleChange}
             suggestions={this.props.suggestions}
@@ -148,6 +149,8 @@ class PollForm extends ImmutablePureComponent {
           )}
 
           <select value={expiresIn} onChange={this.handleSelectDuration}>
+            <option value={1}>{intl.formatMessage(messages.seconds, { number: 1})}</option>
+            <option value={60}>{intl.formatMessage(messages.minutes, { number: 1})}</option>
             <option value={300}>{intl.formatMessage(messages.minutes, { number: 5 })}</option>
             <option value={1800}>{intl.formatMessage(messages.minutes, { number: 30 })}</option>
             <option value={3600}>{intl.formatMessage(messages.hours, { number: 1 })}</option>

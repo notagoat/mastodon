@@ -36,7 +36,7 @@ class REST::InstanceSerializer < ActiveModel::Serializer
   end
 
   def version
-    'Goatstodon'
+    '3.0.1+Goatstodon'
   end
 
   def thumbnail
