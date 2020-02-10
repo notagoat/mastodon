@@ -25,5 +25,6 @@ export const usePendingItems = getMeta('use_pending_items');
 export const maxChars = getMeta('max_toot_chars') || 69420;
 export const showTrends = getMeta('trends');
 export const title = getMeta('title');
+export const cropImages = getMeta('crop_images');
 
 export default initialState;

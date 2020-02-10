@@ -18,6 +18,8 @@ const messages = defineMessages({
   hours: { id: 'intervals.full.hours', defaultMessage: '{number, plural, one {# hour} other {# hours}}' },
   days: { id: 'intervals.full.days', defaultMessage: '{number, plural, one {# day} other {# days}}' },
   years: { id: 'intervals.full.years', defaultMessage: '{number, plural, one {year} other {# years}}' },
+  switchToMultiple: { id: 'compose_form.poll.switch_to_multiple', defaultMessage: 'Change poll to allow multiple choices' },
+  switchToSingle: { id: 'compose_form.poll.switch_to_single', defaultMessage: 'Change poll to allow for a single choice' }
 });
 
 @injectIntl
@@ -52,6 +54,12 @@ class Option extends React.PureComponent {
     e.stopPropagation();
   };
 
+  handleCheckboxKeypress = e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      this.handleToggleMultiple(e);
+    }
+  }
+
   onSuggestionsClearRequested = () => {
     this.props.onClearSuggestions();
   }
@@ -73,8 +81,11 @@ class Option extends React.PureComponent {
           <span
             className={classNames('poll__input', { checkbox: isPollMultiple })}
             onClick={this.handleToggleMultiple}
+            onKeyPress={this.handleCheckboxKeypress}
             role='button'
             tabIndex='0'
+            title={intl.formatMessage(isPollMultiple ? messages.switchToSingle : messages.switchToMultiple)}
+            aria-label={intl.formatMessage(isPollMultiple ? messages.switchToSingle : messages.switchToMultiple)}
           />
 
           <AutosuggestInput
@@ -144,9 +155,7 @@ class PollForm extends ImmutablePureComponent {
         </ul>
 
         <div className='poll__footer'>
-          {options.size < 100 && (
-            <button className='button button-secondary' onClick={this.handleAddOption}><Icon id='plus' /> <FormattedMessage {...messages.add_option} /></button>
-          )}
+          <button disabled={options.size >= 1000} className='button button-secondary' onClick={this.handleAddOption}><Icon id='plus' /> <FormattedMessage {...messages.add_option} /></button>
 
           <select value={expiresIn} onChange={this.handleSelectDuration}>
             <option value={1}>{intl.formatMessage(messages.seconds, { number: 1})}</option>
@@ -158,12 +167,12 @@ class PollForm extends ImmutablePureComponent {
             <option value={86400}>{intl.formatMessage(messages.days, { number: 1 })}</option>
             <option value={259200}>{intl.formatMessage(messages.days, { number: 3 })}</option>
             <option value={604800}>{intl.formatMessage(messages.days, { number: 7 })}</option>
-	    <option value={31557600}>{intl.formatMessage(messages.days, { number: 365 })}</option>
-	    <option value={3153600000}>{intl.formatMessage(messages.years, {number: 100 })}</option>
+	          <option value={31557600}>{intl.formatMessage(messages.days, { number: 365 })}</option>
+	          <option value={3153600000}>{intl.formatMessage(messages.years, {number: 100 })}</option>
           </select>
         </div>
       </div>
     );
   }
-
+  
 }
