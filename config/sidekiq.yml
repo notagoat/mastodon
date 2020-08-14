@@ -3,8 +3,8 @@
 :queues:
   - [default, 6]
   - [push, 4]
-  - [pull]
-  - [mailers, 2]
+  - [pull, 2]
+  - [mailers]
 :schedule:
   scheduled_statuses_scheduler:
     every: '5m'
