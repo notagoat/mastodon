@@ -91,6 +91,52 @@ class UserMailer < Devise::Mailer
     end
   end
 
+  def webauthn_enabled(user, **)
+    @resource = user
+    @instance = Rails.configuration.x.local_domain
+
+    return if @resource.disabled?
+
+    I18n.with_locale(@resource.locale || I18n.default_locale) do
+      mail to: @resource.email, subject: I18n.t('devise.mailer.webauthn_enabled.subject')
+    end
+  end
+
+  def webauthn_disabled(user, **)
+    @resource = user
+    @instance = Rails.configuration.x.local_domain
+
+    return if @resource.disabled?
+
+    I18n.with_locale(@resource.locale || I18n.default_locale) do
+      mail to: @resource.email, subject: I18n.t('devise.mailer.webauthn_disabled.subject')
+    end
+  end
+
+  def webauthn_credential_added(user, webauthn_credential)
+    @resource = user
+    @instance = Rails.configuration.x.local_domain
+    @webauthn_credential = webauthn_credential
+
+    return if @resource.disabled?
+
+    I18n.with_locale(@resource.locale || I18n.default_locale) do
+      mail to: @resource.email, subject: I18n.t('devise.mailer.webauthn_credential.added.subject')
+    end
+  end
+
+  def webauthn_credential_deleted(user, webauthn_credential)
+    @resource = user
+    @instance = Rails.configuration.x.local_domain
+    @webauthn_credential = webauthn_credential
+
+    return if @resource.disabled?
+
+    I18n.with_locale(@resource.locale || I18n.default_locale) do
+      mail to: @resource.email, subject: I18n.t('devise.mailer.webauthn_credential.deleted.subject')
+    end
+  end
+
   def welcome(user)
     @resource = user
     @instance = Rails.configuration.x.local_domain
@@ -123,6 +169,23 @@ class UserMailer < Devise::Mailer
     I18n.with_locale(@resource.locale || I18n.default_locale) do
       mail to: @resource.email,
            subject: I18n.t("user_mailer.warning.subject.#{@warning.action}", acct: "@#{user.account.local_username_and_domain}"),
+           reply_to: Setting.site_contact_email
+    end
+  end
+
+  def sign_in_token(user, remote_ip, user_agent, timestamp)
+    @resource   = user
+    @instance   = Rails.configuration.x.local_domain
+    @remote_ip  = remote_ip
+    @user_agent = user_agent
+    @detection  = Browser.new(user_agent)
+    @timestamp  = timestamp.to_time.utc
+
+    return if @resource.disabled?
+
+    I18n.with_locale(@resource.locale || I18n.default_locale) do
+      mail to: @resource.email,
+           subject: I18n.t('user_mailer.sign_in_token.subject'),
            reply_to: Setting.site_contact_email
     end
   end

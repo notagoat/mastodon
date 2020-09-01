@@ -309,13 +309,108 @@ RSpec.describe FeedManager do
   end
 
   describe '#push_to_list' do
+    let(:owner) { Fabricate(:account, username: 'owner') }
+    let(:alice) { Fabricate(:account, username: 'alice') }
+    let(:bob)   { Fabricate(:account, username: 'bob') }
+    let(:eve)   { Fabricate(:account, username: 'eve') }
+    let(:list)  { Fabricate(:list, account: owner) }
+
+    before do
+      owner.follow!(alice)
+      owner.follow!(bob)
+      owner.follow!(eve)
+
+      list.accounts << alice
+      list.accounts << bob
+    end
+
     it "does not push when the given status's reblog is already inserted" do
-      list = Fabricate(:list)
       reblog = Fabricate(:status)
       status = Fabricate(:status, reblog: reblog)
       FeedManager.instance.push_to_list(list, status)
 
       expect(FeedManager.instance.push_to_list(list, reblog)).to eq false
+    end
+
+    context 'when replies policy is set to no replies' do
+      before do
+        list.replies_policy = :no_replies
+      end
+
+      it 'pushes statuses that are not replies' do
+        status = Fabricate(:status, text: 'Hello world', account: bob)
+        expect(FeedManager.instance.push_to_list(list, status)).to eq true
+      end
+
+      it 'pushes statuses that are replies to list owner' do
+        status = Fabricate(:status, text: 'Hello world', account: owner)
+        reply  = Fabricate(:status, text: 'Nay', thread: status, account: bob)
+        expect(FeedManager.instance.push_to_list(list, reply)).to eq true
+      end
+
+      it 'does not push replies to another member of the list' do
+        status = Fabricate(:status, text: 'Hello world', account: alice)
+        reply  = Fabricate(:status, text: 'Nay', thread: status, account: bob)
+        expect(FeedManager.instance.push_to_list(list, reply)).to eq false
+      end
+    end
+
+    context 'when replies policy is set to list-only replies' do
+      before do
+        list.replies_policy = :list_replies
+      end
+
+      it 'pushes statuses that are not replies' do
+        status = Fabricate(:status, text: 'Hello world', account: bob)
+        expect(FeedManager.instance.push_to_list(list, status)).to eq true
+      end
+
+      it 'pushes statuses that are replies to list owner' do
+        status = Fabricate(:status, text: 'Hello world', account: owner)
+        reply  = Fabricate(:status, text: 'Nay', thread: status, account: bob)
+        expect(FeedManager.instance.push_to_list(list, reply)).to eq true
+      end
+
+      it 'pushes replies to another member of the list' do
+        status = Fabricate(:status, text: 'Hello world', account: alice)
+        reply  = Fabricate(:status, text: 'Nay', thread: status, account: bob)
+        expect(FeedManager.instance.push_to_list(list, reply)).to eq true
+      end
+
+      it 'does not push replies to someone not a member of the list' do
+        status = Fabricate(:status, text: 'Hello world', account: eve)
+        reply  = Fabricate(:status, text: 'Nay', thread: status, account: bob)
+        expect(FeedManager.instance.push_to_list(list, reply)).to eq false
+      end
+    end
+
+    context 'when replies policy is set to any reply' do
+      before do
+        list.replies_policy = :all_replies
+      end
+
+      it 'pushes statuses that are not replies' do
+        status = Fabricate(:status, text: 'Hello world', account: bob)
+        expect(FeedManager.instance.push_to_list(list, status)).to eq true
+      end
+
+      it 'pushes statuses that are replies to list owner' do
+        status = Fabricate(:status, text: 'Hello world', account: owner)
+        reply  = Fabricate(:status, text: 'Nay', thread: status, account: bob)
+        expect(FeedManager.instance.push_to_list(list, reply)).to eq true
+      end
+
+      it 'pushes replies to another member of the list' do
+        status = Fabricate(:status, text: 'Hello world', account: alice)
+        reply  = Fabricate(:status, text: 'Nay', thread: status, account: bob)
+        expect(FeedManager.instance.push_to_list(list, reply)).to eq true
+      end
+
+      it 'pushes replies to someone not a member of the list' do
+        status = Fabricate(:status, text: 'Hello world', account: eve)
+        reply  = Fabricate(:status, text: 'Nay', thread: status, account: bob)
+        expect(FeedManager.instance.push_to_list(list, reply)).to eq true
+      end
     end
   end
 
@@ -427,6 +522,31 @@ RSpec.describe FeedManager do
 
       deletion = Oj.dump(event: :delete, payload: status.id.to_s)
       expect(Redis.current).to have_received(:publish).with("timeline:#{receiver.id}", deletion)
+    end
+  end
+
+  describe '#clear_from_timeline' do
+    let(:account)          { Fabricate(:account) }
+    let(:followed_account) { Fabricate(:account) }
+    let(:target_account)   { Fabricate(:account) }
+    let(:status_1)         { Fabricate(:status, account: followed_account) }
+    let(:status_2)         { Fabricate(:status, account: target_account) }
+    let(:status_3)         { Fabricate(:status, account: followed_account, mentions: [Fabricate(:mention, account: target_account)]) }
+    let(:status_4)         { Fabricate(:status, mentions: [Fabricate(:mention, account: target_account)]) }
+    let(:status_5)         { Fabricate(:status, account: followed_account, reblog: status_4) }
+    let(:status_6)         { Fabricate(:status, account: followed_account, reblog: status_2) }
+    let(:status_7)         { Fabricate(:status, account: followed_account) }
+
+    before do
+      [status_1, status_3, status_5, status_6, status_7].each do |status|
+        Redis.current.zadd("feed:home:#{account.id}", status.id, status.id)
+      end
+    end
+
+    it 'correctly cleans the timeline' do
+      FeedManager.instance.clear_from_timeline(account, target_account)
+
+      expect(Redis.current.zrange("feed:home:#{account.id}", 0, -1)).to eq [status_1.id.to_s, status_7.id.to_s]
     end
   end
 end

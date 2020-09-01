@@ -7,6 +7,7 @@ import DropdownMenuContainer from '../containers/dropdown_menu_container';
 import { defineMessages, injectIntl } from 'react-intl';
 import ImmutablePureComponent from 'react-immutable-pure-component';
 import { me, isStaff } from '../initial_state';
+import classNames from 'classnames';
 
 const messages = defineMessages({
   delete: { id: 'status.delete', defaultMessage: 'Delete' },
@@ -85,6 +86,7 @@ class StatusActionBar extends ImmutablePureComponent {
     onPin: PropTypes.func,
     onBookmark: PropTypes.func,
     withDismiss: PropTypes.bool,
+    scrollKey: PropTypes.string,
     intl: PropTypes.object.isRequired,
   };
 
@@ -263,6 +265,8 @@ class StatusActionBar extends ImmutablePureComponent {
         if (status.get('visibility') === 'private') {
           menu.push({ text: intl.formatMessage(status.get('reblogged') ? messages.cancel_reblog_private : messages.reblog_private), action: this.handleReblogClick });
         }
+      if (publicStatus) {
+        menu.push({ text: intl.formatMessage(status.get('pinned') ? messages.unpin : messages.pin), action: this.handlePinClick });
       }
 
       menu.push({ text: intl.formatMessage(messages.delete), action: this.handleDeleteClick });

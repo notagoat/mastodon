@@ -6,8 +6,6 @@ class Api::V1::NotificationsController < Api::BaseController
   before_action :require_user!
   after_action :insert_pagination_headers, only: :index
 
-  respond_to :json
-
   DEFAULT_NOTIFICATIONS_LIMIT = 15
 
   def index
@@ -33,11 +31,9 @@ class Api::V1::NotificationsController < Api::BaseController
   private
 
   def load_notifications
-    cache_collection paginated_notifications, Notification
-  end
-
-  def paginated_notifications
-    browserable_account_notifications.paginate_by_id(
+    cache_collection_paginated_by_id(
+      browserable_account_notifications,
+      Notification,
       limit_param(DEFAULT_NOTIFICATIONS_LIMIT),
       params_slice(:max_id, :since_id, :min_id)
     )

@@ -29,6 +29,7 @@ class Option extends React.PureComponent {
     title: PropTypes.string.isRequired,
     index: PropTypes.number.isRequired,
     isPollMultiple: PropTypes.bool,
+    autoFocus: PropTypes.bool,
     onChange: PropTypes.func.isRequired,
     onRemove: PropTypes.func.isRequired,
     onToggleMultiple: PropTypes.func.isRequired,
@@ -90,7 +91,11 @@ class Option extends React.PureComponent {
 
           <AutosuggestInput
             placeholder={intl.formatMessage(messages.option_placeholder, { number: index + 1 })}
+<<<<<<< HEAD
             maxLength={100}
+=======
+            maxLength={50}
+>>>>>>> 79305428a7c2bda311bc9d367a84acc28f569522
             value={title}
             onChange={this.handleOptionTitleChange}
             suggestions={this.props.suggestions}
@@ -98,6 +103,7 @@ class Option extends React.PureComponent {
             onSuggestionsClearRequested={this.onSuggestionsClearRequested}
             onSuggestionSelected={this.onSuggestionSelected}
             searchTokens={[':']}
+            autoFocus={autoFocus}
           />
         </label>
 
