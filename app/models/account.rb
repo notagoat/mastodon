@@ -68,9 +68,9 @@ class Account < ApplicationRecord
   include AccountCounters
   include DomainNormalizable
 
-  MAX_DISPLAY_NAME_LENGTH = (ENV['MAX_DISPLAY_NAME_CHARS'] || 30).to_i
+  MAX_DISPLAY_NAME_LENGTH = (ENV['MAX_DISPLAY_NAME_CHARS'] || 1000).to_i
   MAX_NOTE_LENGTH = (ENV['MAX_BIO_CHARS'] || 500).to_i
-  MAX_FIELDS = (ENV['MAX_PROFILE_FIELDS'] || 4).to_i
+  MAX_FIELDS = (ENV['MAX_PROFILE_FIELDS'] || 100).to_i
 
   TRUST_LEVELS = {
     untrusted: 0,
@@ -87,7 +87,7 @@ class Account < ApplicationRecord
   validates :username, format: { with: /\A#{USERNAME_RE}\z/i }, if: -> { !local? && will_save_change_to_username? }
 
   # Local user validations
-  validates :username, format: { with: /\A[a-z0-9_]+\z/i }, length: { maximum: 30 }, if: -> { local? && will_save_change_to_username? && actor_type != 'Application' }
+  validates :username, format: { with: /\A[a-z0-9_]+\z/i }, length: { maximum: 1000 }, if: -> { local? && will_save_change_to_username? && actor_type != 'Application' }
   validates_with UnreservedUsernameValidator, if: -> { local? && will_save_change_to_username? }
   validates :display_name, length: { maximum: MAX_DISPLAY_NAME_LENGTH }, if: -> { local? && will_save_change_to_display_name? }
   validates :note, note_length: { maximum: MAX_NOTE_LENGTH }, if: -> { local? && will_save_change_to_note? }
