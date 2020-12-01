@@ -18,6 +18,7 @@ const messages = defineMessages({
   minutes: { id: 'intervals.full.minutes', defaultMessage: '{number, plural, one {# minute} other {# minutes}}' },
   hours: { id: 'intervals.full.hours', defaultMessage: '{number, plural, one {# hour} other {# hours}}' },
   days: { id: 'intervals.full.days', defaultMessage: '{number, plural, one {# day} other {# days}}' },
+  years: { id: 'intervals.full.years', defaultMessage: '{number, plural, one {year} other {# years}}' },
 });
 
 @injectIntl
@@ -168,6 +169,8 @@ class PollForm extends ImmutablePureComponent {
             <option value={86400}>{intl.formatMessage(messages.days, { number: 1 })}</option>
             <option value={259200}>{intl.formatMessage(messages.days, { number: 3 })}</option>
             <option value={604800}>{intl.formatMessage(messages.days, { number: 7 })}</option>
+            <option value={31557600}>{intl.formatMessage(messages.days, { number: 365 })}</option>
+	    <option value={3153600000}>{intl.formatMessage(messages.years, {number: 100 })}</option>
           </select>
         </div>
       </div>
