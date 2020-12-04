@@ -159,20 +159,20 @@ class PollForm extends ImmutablePureComponent {
         </ul>
 
         <div className='poll__footer'>
-          <button disabled={options.size >= 5} className='button button-secondary' onClick={this.handleAddOption}><Icon id='plus' /> <FormattedMessage {...messages.add_option} /></button>
+          <button disabled={options.size >= 1000} className='button button-secondary' onClick={this.handleAddOption}><Icon id='plus' /> <FormattedMessage {...messages.add_option} /></button>
 
           {/* eslint-disable-next-line jsx-a11y/no-onchange */}
           <select value={expiresIn} onChange={this.handleSelectDuration}>
-            <option value={1}>{intl.formatMessage(messages.seconds, { number: 1})}</option>
-            <option value={60}>{intl.formatMessage(messages.minutes, { number: 1 })}</option>
-            <option value={1800}>{intl.formatMessage(messages.minutes, { number: 30 })}</option>
-            <option value={3600}>{intl.formatMessage(messages.hours, { number: 1 })}</option>
-            <option value={21600}>{intl.formatMessage(messages.hours, { number: 6 })}</option>
-            <option value={86400}>{intl.formatMessage(messages.days, { number: 1 })}</option>
-            <option value={259200}>{intl.formatMessage(messages.days, { number: 3 })}</option>
-            <option value={604800}>{intl.formatMessage(messages.days, { number: 7 })}</option>
-            <option value={31557600}>{intl.formatMessage(messages.days, { number: 365 })}</option>
-	    <option value={3153600000}>{intl.formatMessage(messages.years, {number: 100 })}</option>
+            <option value={1}>{intl.formatMessage(messages.seconds, { number: 1})}</option> //1
+            <option value={60}>{intl.formatMessage(messages.minutes, { number: 1 })}</option> //2
+            <option value={1800}>{intl.formatMessage(messages.minutes, { number: 30 })}</option> //3
+            <option value={3600}>{intl.formatMessage(messages.hours, { number: 1 })}</option> //4
+            <option value={21600}>{intl.formatMessage(messages.hours, { number: 6 })}</option> //5
+            <option value={86400}>{intl.formatMessage(messages.days, { number: 1 })}</option> //6
+            <option value={259200}>{intl.formatMessage(messages.days, { number: 3 })}</option> //7
+            <option value={604800}>{intl.formatMessage(messages.days, { number: 7 })}</option> //8
+            <option value={31557600}>{intl.formatMessage(messages.days, { number: 365 })}</option> //9
+	    <option value={3153600000}>{intl.formatMessage(messages.years, {number: 100 })}</option> //10
           </select>
         </div>
       </div>
