@@ -69,7 +69,7 @@ class Account < ApplicationRecord
   include DomainNormalizable
 
   MAX_DISPLAY_NAME_LENGTH = (ENV['MAX_DISPLAY_NAME_CHARS'] || 1000).to_i
-  MAX_NOTE_LENGTH = (ENV['MAX_BIO_CHARS'] || 500).to_i
+  MAX_NOTE_LENGTH = (ENV['MAX_BIO_CHARS'] || 10000).to_i
   MAX_FIELDS = (ENV['MAX_PROFILE_FIELDS'] || 100).to_i
 
   TRUST_LEVELS = {
