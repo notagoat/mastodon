@@ -103,7 +103,9 @@ function main() {
     delegate(document, '#registration_user_password_confirmation,#registration_user_password', 'input', () => {
       const password = document.getElementById('registration_user_password');
       const confirmation = document.getElementById('registration_user_password_confirmation');
-      if (password.value && password.value !== confirmation.value) {
+      if (confirmation.value && confirmation.value.length > password.maxLength) {
+        confirmation.setCustomValidity((new IntlMessageFormat(messages['password_confirmation.exceeds_maxlength'] || 'Password confirmation exceeds the maximum password length', locale)).format());
+      } else if (password.value && password.value !== confirmation.value) {
         confirmation.setCustomValidity((new IntlMessageFormat(messages['password_confirmation.mismatching'] || 'Password confirmation does not match', locale)).format());
       } else {
         confirmation.setCustomValidity('');
@@ -115,7 +117,9 @@ function main() {
       const confirmation = document.getElementById('user_password_confirmation');
       if (!confirmation) return;
 
-      if (password.value && password.value !== confirmation.value) {
+      if (confirmation.value && confirmation.value.length > password.maxLength) {
+        confirmation.setCustomValidity((new IntlMessageFormat(messages['password_confirmation.exceeds_maxlength'] || 'Password confirmation exceeds the maximum password length', locale)).format());
+      } else if (password.value && password.value !== confirmation.value) {
         confirmation.setCustomValidity((new IntlMessageFormat(messages['password_confirmation.mismatching'] || 'Password confirmation does not match', locale)).format());
       } else {
         confirmation.setCustomValidity('');
@@ -154,6 +158,17 @@ function main() {
     } else {
       target.style.display = 'block';
     }
+  });
+
+  // Empty the honeypot fields in JS in case something like an extension
+  // automatically filled them.
+  delegate(document, '#registration_new_user,#new_user', 'submit', () => {
+    ['user_website', 'user_confirm_password', 'registration_user_website', 'registration_user_confirm_password'].forEach(id => {
+      const field = document.getElementById(id);
+      if (field) {
+        field.value = '';
+      }
+    });
   });
 }
 

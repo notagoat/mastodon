@@ -34,7 +34,13 @@ module JsonLdHelper
   end
 
   def as_array(value)
-    value.is_a?(Array) ? value : [value]
+    if value.nil?
+      []
+    elsif value.is_a?(Array)
+      value
+    else
+      [value]
+    end
   end
 
   def value_or_id(value)
@@ -67,7 +73,7 @@ module JsonLdHelper
     unless id
       json = fetch_resource_without_id_validation(uri, on_behalf_of)
 
-      return unless json
+      return if !json.is_a?(Hash) || unsupported_uri_scheme?(json['id'])
 
       uri = json['id']
     end

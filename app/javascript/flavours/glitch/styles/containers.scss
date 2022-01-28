@@ -44,7 +44,7 @@
 }
 
 .compose-standalone {
-  .compose-form {
+  .composer {
     width: 400px;
     margin: 0 auto;
     padding: 20px 0;
@@ -444,6 +444,10 @@
       .logo-button {
         background-color: $secondary-text-color;
       }
+    }
+
+    .logo-button {
+      padding: 3px 15px;
     }
 
     &__image {

@@ -87,8 +87,10 @@ class Account extends ImmutablePureComponent {
 
     let buttons;
 
-    if (onActionClick && actionIcon) {
-      buttons = <IconButton icon={actionIcon} title={actionTitle} onClick={this.handleAction} />;
+    if (onActionClick) {
+      if (actionIcon) {
+        buttons = <IconButton icon={actionIcon} title={actionTitle} onClick={this.handleAction} />;
+      }
     } else if (account.get('id') !== me && !small && account.get('relationship', null) !== null) {
       const following = account.getIn(['relationship', 'following']);
       const requested = account.getIn(['relationship', 'requested']);
@@ -126,7 +128,7 @@ class Account extends ImmutablePureComponent {
       <Permalink
         className='account small'
         href={account.get('url')}
-        to={`/accounts/${account.get('id')}`}
+        to={`/@${account.get('acct')}`}
       >
         <div className='account__avatar-wrapper'>
           <Avatar
@@ -142,7 +144,7 @@ class Account extends ImmutablePureComponent {
     ) : (
       <div className='account'>
         <div className='account__wrapper'>
-          <Permalink key={account.get('id')} className='account__display-name' href={account.get('url')} to={`/accounts/${account.get('id')}`}>
+          <Permalink key={account.get('id')} className='account__display-name' title={account.get('acct')} href={account.get('url')} to={`/@${account.get('acct')}`}>
             <div className='account__avatar-wrapper'><Avatar account={account} size={36} /></div>
             {mute_expires_at}
             <DisplayName account={account} />
