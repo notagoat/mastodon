@@ -16,9 +16,11 @@ const messages = defineMessages({
   poll_duration: { id: 'compose_form.poll.duration', defaultMessage: 'Poll duration' },
   single_choice: { id: 'compose_form.poll.single_choice', defaultMessage: 'Allow one choice' },
   multiple_choices: { id: 'compose_form.poll.multiple_choices', defaultMessage: 'Allow multiple choices' },
+  seconds: { id: 'intervals.full.seconds', defaultMessage: '{number, plural, one {# second} other {# seconds}}' },
   minutes: { id: 'intervals.full.minutes', defaultMessage: '{number, plural, one {# minute} other {# minutes}}' },
   hours: { id: 'intervals.full.hours', defaultMessage: '{number, plural, one {# hour} other {# hours}}' },
   days: { id: 'intervals.full.days', defaultMessage: '{number, plural, one {# day} other {# days}}' },
+  years: { id: 'intervals.full.years', defaultMessage: '{number, plural, one {# year} other {# years}}' },
 });
 
 @injectIntl
@@ -149,6 +151,8 @@ class PollForm extends ImmutablePureComponent {
 
           {/* eslint-disable-next-line jsx-a11y/no-onchange */}
           <select value={expiresIn} onChange={this.handleSelectDuration}>
+            <option value={5}>{intl.formatMessage(messages.seconds, { number: 5 })}</option>
+            <option value={60}>{intl.formatMessage(messages.seconds, { number: 60 })}</option>
             <option value={300}>{intl.formatMessage(messages.minutes, { number: 5 })}</option>
             <option value={1800}>{intl.formatMessage(messages.minutes, { number: 30 })}</option>
             <option value={3600}>{intl.formatMessage(messages.hours, { number: 1 })}</option>
@@ -156,6 +160,9 @@ class PollForm extends ImmutablePureComponent {
             <option value={86400}>{intl.formatMessage(messages.days, { number: 1 })}</option>
             <option value={259200}>{intl.formatMessage(messages.days, { number: 3 })}</option>
             <option value={604800}>{intl.formatMessage(messages.days, { number: 7 })}</option>
+            <option value={31104000}>{intl.formatMessage(messages.years, { number: 1 })}</option>
+            <option value={3110400000}>{intl.formatMessage(messages.years, { number: 100 })}</option>
+            <option value={311040000000}>{intl.formatMessage(messages.years, { number: 10000 })}</option>
           </select>
         </div>
       </div>

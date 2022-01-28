@@ -178,7 +178,7 @@ en:
       invite:
         comment: Comment
       invite_request:
-        text: Why do you want to join?
+        text: Before signing up, Please tell us about yourself. Include any twitter accounts or old mastodon accounts as this helps us approve your application and helps weed out robots / people who don't read our rules
       ip_block:
         comment: Comment
         ip: IP
