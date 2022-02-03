@@ -55,46 +55,50 @@ class FeedManager
   # Add a status to a home feed and send a streaming API update
   # @param [Account] account
   # @param [Status] status
+  # @param [Boolean] update
   # @return [Boolean]
-  def push_to_home(account, status)
+  def push_to_home(account, status, update: false)
     return false unless add_to_feed(:home, account.id, status, account.user&.aggregates_reblogs?)
 
     trim(:home, account.id)
-    PushUpdateWorker.perform_async(account.id, status.id, "timeline:#{account.id}") if push_update_required?("timeline:#{account.id}")
+    PushUpdateWorker.perform_async(account.id, status.id, "timeline:#{account.id}", { 'update' => update }) if push_update_required?("timeline:#{account.id}")
     true
   end
 
   # Remove a status from a home feed and send a streaming API update
   # @param [Account] account
   # @param [Status] status
+  # @param [Boolean] update
   # @return [Boolean]
-  def unpush_from_home(account, status)
+  def unpush_from_home(account, status, update: false)
     return false unless remove_from_feed(:home, account.id, status, account.user&.aggregates_reblogs?)
 
-    redis.publish("timeline:#{account.id}", Oj.dump(event: :delete, payload: status.id.to_s))
+    redis.publish("timeline:#{account.id}", Oj.dump(event: :delete, payload: status.id.to_s)) unless update
     true
   end
 
   # Add a status to a list feed and send a streaming API update
   # @param [List] list
   # @param [Status] status
+  # @param [Boolean] update
   # @return [Boolean]
-  def push_to_list(list, status)
+  def push_to_list(list, status, update: false)
     return false if filter_from_list?(status, list) || !add_to_feed(:list, list.id, status, list.account.user&.aggregates_reblogs?)
 
     trim(:list, list.id)
-    PushUpdateWorker.perform_async(list.account_id, status.id, "timeline:list:#{list.id}") if push_update_required?("timeline:list:#{list.id}")
+    PushUpdateWorker.perform_async(list.account_id, status.id, "timeline:list:#{list.id}", { 'update' => update }) if push_update_required?("timeline:list:#{list.id}")
     true
   end
 
   # Remove a status from a list feed and send a streaming API update
   # @param [List] list
   # @param [Status] status
+  # @param [Boolean] update
   # @return [Boolean]
-  def unpush_from_list(list, status)
+  def unpush_from_list(list, status, update: false)
     return false unless remove_from_feed(:list, list.id, status, list.account.user&.aggregates_reblogs?)
 
-    redis.publish("timeline:list:#{list.id}", Oj.dump(event: :delete, payload: status.id.to_s))
+    redis.publish("timeline:list:#{list.id}", Oj.dump(event: :delete, payload: status.id.to_s)) unless update
     true
   end
 
@@ -102,11 +106,11 @@ class FeedManager
   # @param [Account] account
   # @param [Status] status
   # @return [Boolean]
-  def push_to_direct(account, status)
+  def push_to_direct(account, status, update: false)
     return false unless add_to_feed(:direct, account.id, status)
 
     trim(:direct, account.id)
-    PushUpdateWorker.perform_async(account.id, status.id, "timeline:direct:#{account.id}")
+    PushUpdateWorker.perform_async(account.id, status.id, "timeline:direct:#{account.id}") unless update
     true
   end
 
@@ -114,10 +118,10 @@ class FeedManager
   # @param [List] list
   # @param [Status] status
   # @return [Boolean]
-  def unpush_from_direct(account, status)
+  def unpush_from_direct(account, status, update: false)
     return false unless remove_from_feed(:direct, account.id, status)
 
-    redis.publish("timeline:direct:#{account.id}", Oj.dump(event: :delete, payload: status.id.to_s))
+    redis.publish("timeline:direct:#{account.id}", Oj.dump(event: :delete, payload: status.id.to_s)) unless update
     true
   end
 
@@ -219,6 +223,36 @@ class FeedManager
     end
   end
 
+  # Clear all statuses from or mentioning target_account from a list feed
+  # @param [List] list
+  # @param [Account] target_account
+  # @return [void]
+  def clear_from_list(list, target_account)
+    timeline_key        = key(:list, list.id)
+    timeline_status_ids = redis.zrange(timeline_key, 0, -1)
+    statuses            = Status.where(id: timeline_status_ids).select(:id, :reblog_of_id, :account_id).to_a
+    reblogged_ids       = Status.where(id: statuses.map(&:reblog_of_id).compact, account: target_account).pluck(:id)
+    with_mentions_ids   = Mention.active.where(status_id: statuses.flat_map { |s| [s.id, s.reblog_of_id] }.compact, account: target_account).pluck(:status_id)
+
+    target_statuses = statuses.select do |status|
+      status.account_id == target_account.id || reblogged_ids.include?(status.reblog_of_id) || with_mentions_ids.include?(status.id) || with_mentions_ids.include?(status.reblog_of_id)
+    end
+
+    target_statuses.each do |status|
+      unpush_from_list(list, status)
+    end
+  end
+
+  # Clear all statuses from or mentioning target_account from an account's lists
+  # @param [Account] account
+  # @param [Account] target_account
+  # @return [void]
+  def clear_from_lists(account, target_account)
+    List.where(account: account).each do |list|
+      clear_from_list(list, target_account)
+    end
+  end
+
   # Populate home feed of account from scratch
   # @param [Account] account
   # @return [void]
@@ -276,6 +310,36 @@ class FeedManager
       break unless added.zero?
 
       max_id = statuses.last.id
+    end
+  end
+
+  # Completely clear multiple feeds at once
+  # @param [Symbol] type
+  # @param [Array<Integer>] ids
+  # @return [void]
+  def clean_feeds!(type, ids)
+    reblogged_id_sets = {}
+
+    redis.pipelined do
+      ids.each do |feed_id|
+        redis.del(key(type, feed_id))
+        reblog_key = key(type, feed_id, 'reblogs')
+        # We collect a future for this: we don't block while getting
+        # it, but we can iterate over it later.
+        reblogged_id_sets[feed_id] = redis.zrange(reblog_key, 0, -1)
+        redis.del(reblog_key)
+      end
+    end
+
+    # Remove all of the reblog tracking keys we just removed the
+    # references to.
+    redis.pipelined do
+      reblogged_id_sets.each do |feed_id, future|
+        future.value.each do |reblogged_id|
+          reblog_set_key = key(type, feed_id, "reblogs:#{reblogged_id}")
+          redis.del(reblog_set_key)
+        end
+      end
     end
   end
 
@@ -403,8 +467,8 @@ class FeedManager
   def filter_from_list?(status, list)
     if status.reply? && status.in_reply_to_account_id != status.account_id
       should_filter = status.in_reply_to_account_id != list.account_id
-      should_filter &&= !list.show_all_replies?
-      should_filter &&= !(list.show_list_replies? && ListAccount.where(list_id: list.id, account_id: status.in_reply_to_account_id).exists?)
+      should_filter &&= !list.show_followed?
+      should_filter &&= !(list.show_list? && ListAccount.where(list_id: list.id, account_id: status.in_reply_to_account_id).exists?)
 
       return !!should_filter
     end
@@ -424,8 +488,8 @@ class FeedManager
 
     active_filters.map! do |filter|
       if filter.whole_word
-        sb = filter.phrase =~ /\A[[:word:]]/ ? '\b' : ''
-        eb = filter.phrase =~ /[[:word:]]\z/ ? '\b' : ''
+        sb = /\A[[:word:]]/.match?(filter.phrase) ? '\b' : ''
+        eb = /[[:word:]]\z/.match?(filter.phrase) ? '\b' : ''
 
         /(?mix:#{sb}#{Regexp.escape(filter.phrase)}#{eb})/
       else
@@ -445,7 +509,7 @@ class FeedManager
       status.media_attachments.map(&:description).join("\n\n"),
     ].compact.join("\n\n")
 
-    !combined_regex.match(combined_text).nil?
+    combined_regex.match?(combined_text)
   end
 
   # Adds a status to an account's feed, returning true if a status was
@@ -561,12 +625,12 @@ class FeedManager
       arr
     end
 
-    crutches[:following]       = Follow.where(account_id: receiver_id, target_account_id: statuses.map(&:in_reply_to_account_id).compact).pluck(:target_account_id).each_with_object({}) { |id, mapping| mapping[id] = true }
-    crutches[:hiding_reblogs]  = Follow.where(account_id: receiver_id, target_account_id: statuses.map { |s| s.account_id if s.reblog? }.compact, show_reblogs: false).pluck(:target_account_id).each_with_object({}) { |id, mapping| mapping[id] = true }
-    crutches[:blocking]        = Block.where(account_id: receiver_id, target_account_id: check_for_blocks).pluck(:target_account_id).each_with_object({}) { |id, mapping| mapping[id] = true }
-    crutches[:muting]          = Mute.where(account_id: receiver_id, target_account_id: check_for_blocks).pluck(:target_account_id).each_with_object({}) { |id, mapping| mapping[id] = true }
-    crutches[:domain_blocking] = AccountDomainBlock.where(account_id: receiver_id, domain: statuses.map { |s| s.reblog&.account&.domain }.compact).pluck(:domain).each_with_object({}) { |domain, mapping| mapping[domain] = true }
-    crutches[:blocked_by]      = Block.where(target_account_id: receiver_id, account_id: statuses.map { |s| s.reblog&.account_id }.compact).pluck(:account_id).each_with_object({}) { |id, mapping| mapping[id] = true }
+    crutches[:following]       = Follow.where(account_id: receiver_id, target_account_id: statuses.map(&:in_reply_to_account_id).compact).pluck(:target_account_id).index_with(true)
+    crutches[:hiding_reblogs]  = Follow.where(account_id: receiver_id, target_account_id: statuses.map { |s| s.account_id if s.reblog? }.compact, show_reblogs: false).pluck(:target_account_id).index_with(true)
+    crutches[:blocking]        = Block.where(account_id: receiver_id, target_account_id: check_for_blocks).pluck(:target_account_id).index_with(true)
+    crutches[:muting]          = Mute.where(account_id: receiver_id, target_account_id: check_for_blocks).pluck(:target_account_id).index_with(true)
+    crutches[:domain_blocking] = AccountDomainBlock.where(account_id: receiver_id, domain: statuses.map { |s| s.reblog&.account&.domain }.compact).pluck(:domain).index_with(true)
+    crutches[:blocked_by]      = Block.where(target_account_id: receiver_id, account_id: statuses.map { |s| s.reblog&.account_id }.compact).pluck(:account_id).index_with(true)
 
     crutches
   end

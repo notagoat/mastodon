@@ -11,6 +11,7 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
 
   attribute :content
   attribute :content_map, if: :language?
+  attribute :updated, if: :edited?
 
   attribute :direct_message, if: :non_public?
 
@@ -76,6 +77,8 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
     object.language.present?
   end
 
+  delegate :edited?, to: :object
+
   def in_reply_to
     return unless object.reply? && !object.thread.nil?
 
@@ -88,6 +91,10 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
 
   def published
     object.created_at.iso8601
+  end
+
+  def updated
+    object.edited_at.iso8601
   end
 
   def url
@@ -181,6 +188,8 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
 
     attributes :type, :media_type, :url, :name, :blurhash
     attribute :focal_point, if: :focal_point?
+    attribute :width, if: :width?
+    attribute :height, if: :height?
 
     has_one :icon, serializer: ActivityPub::ImageSerializer, if: :thumbnail?
 
@@ -214,6 +223,22 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
 
     def thumbnail?
       object.thumbnail.present?
+    end
+
+    def width?
+      object.file.meta&.dig('original', 'width').present?
+    end
+
+    def height?
+      object.file.meta&.dig('original', 'height').present?
+    end
+
+    def width
+      object.file.meta.dig('original', 'width')
+    end
+
+    def height
+      object.file.meta.dig('original', 'height')
     end
   end
 

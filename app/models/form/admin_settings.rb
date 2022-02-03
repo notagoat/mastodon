@@ -16,7 +16,6 @@ class Form::AdminSettings
     open_deletion
     timeline_preview
     show_staff_badge
-    enable_bootstrap_timeline_accounts
     bootstrap_timeline_accounts
     flavour
     skin
@@ -28,40 +27,39 @@ class Form::AdminSettings
     custom_css
     profile_directory
     hide_followers_count
-    enable_keybase
     flavour_and_skin
     thumbnail
     hero
     mascot
     show_reblogs_in_public_timelines
     show_replies_in_public_timelines
-    spam_check_enabled
     trends
     trendable_by_default
     show_domain_blocks
     show_domain_blocks_rationale
     noindex
     outgoing_spoilers
+    require_invite_text
+    captcha_enabled
   ).freeze
 
   BOOLEAN_KEYS = %i(
     open_deletion
     timeline_preview
     show_staff_badge
-    enable_bootstrap_timeline_accounts
     activity_api_enabled
     peers_api_enabled
     show_known_fediverse_at_about_page
     preview_sensitive_media
     profile_directory
     hide_followers_count
-    enable_keybase
     show_reblogs_in_public_timelines
     show_replies_in_public_timelines
-    spam_check_enabled
     trends
     trendable_by_default
     noindex
+    require_invite_text
+    captcha_enabled
   ).freeze
 
   UPLOAD_KEYS = %i(

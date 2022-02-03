@@ -14,7 +14,7 @@ module Mastodon
     end
 
     MIN_SUPPORTED_VERSION = 2019_10_01_213028
-    MAX_SUPPORTED_VERSION = 2020_10_17_234926
+    MAX_SUPPORTED_VERSION = 2022_01_18_183123
 
     # Stubs to enjoy ActiveRecord queries while not depending on a particular
     # version of the code/database
@@ -42,6 +42,8 @@ module Mastodon
     class CustomEmojiCategory < ApplicationRecord; end
     class Bookmark < ApplicationRecord; end
     class WebauthnCredential < ApplicationRecord; end
+    class FollowRecommendationSuppression < ApplicationRecord; end
+    class CanonicalEmailBlock < ApplicationRecord; end
 
     class PreviewCard < ApplicationRecord
       self.inheritance_column = false
@@ -55,8 +57,8 @@ module Mastodon
       belongs_to :account, inverse_of: :account_stat
     end
 
+    # Dummy class, to make migration possible across version changes
     class Account < ApplicationRecord
-      # Dummy class, to make migration possible across version changes
       has_one :user, inverse_of: :account
       has_one :account_stat, inverse_of: :account
 
@@ -68,6 +70,57 @@ module Mastodon
 
       def acct
         local? ? username : "#{username}@#{domain}"
+      end
+
+      # This is a duplicate of the AccountMerging concern because we need it to
+      # be independent from code version.
+      def merge_with!(other_account)
+        # Since it's the same remote resource, the remote resource likely
+        # already believes we are following/blocking, so it's safe to
+        # re-attribute the relationships too. However, during the presence
+        # of the index bug users could have *also* followed the reference
+        # account already, therefore mass update will not work and we need
+        # to check for (and skip past) uniqueness errors
+
+        owned_classes = [
+          Status, StatusPin, MediaAttachment, Poll, Report, Tombstone, Favourite,
+          Follow, FollowRequest, Block, Mute,
+          AccountModerationNote, AccountPin, AccountStat, ListAccount,
+          PollVote, Mention
+        ]
+        owned_classes << AccountDeletionRequest if ActiveRecord::Base.connection.table_exists?(:account_deletion_requests)
+        owned_classes << AccountNote if ActiveRecord::Base.connection.table_exists?(:account_notes)
+        owned_classes << FollowRecommendationSuppression if ActiveRecord::Base.connection.table_exists?(:follow_recommendation_suppressions)
+        owned_classes << AccountIdentityProof if ActiveRecord::Base.connection.table_exists?(:account_identity_proofs)
+
+        owned_classes.each do |klass|
+          klass.where(account_id: other_account.id).find_each do |record|
+            begin
+              record.update_attribute(:account_id, id)
+            rescue ActiveRecord::RecordNotUnique
+              next
+            end
+          end
+        end
+
+        target_classes = [Follow, FollowRequest, Block, Mute, AccountModerationNote, AccountPin]
+        target_classes << AccountNote if ActiveRecord::Base.connection.table_exists?(:account_notes)
+
+        target_classes.each do |klass|
+          klass.where(target_account_id: other_account.id).find_each do |record|
+            begin
+              record.update_attribute(:target_account_id, id)
+            rescue ActiveRecord::RecordNotUnique
+              next
+            end
+          end
+        end
+
+        if ActiveRecord::Base.connection.table_exists?(:canonical_email_blocks)
+          CanonicalEmailBlock.where(reference_account_id: other_account.id).find_each do |record|
+            record.update_attribute(:reference_account_id, id)
+          end
+        end
       end
     end
 
@@ -87,19 +140,23 @@ module Mastodon
       @prompt = TTY::Prompt.new
 
       if ActiveRecord::Migrator.current_version < MIN_SUPPORTED_VERSION
-        @prompt.warn 'Your version of the database schema is too old and is not supported by this script.'
-        @prompt.warn 'Please update to at least Mastodon 3.0.0 before running this script.'
+        @prompt.error 'Your version of the database schema is too old and is not supported by this script.'
+        @prompt.error 'Please update to at least Mastodon 3.0.0 before running this script.'
         exit(1)
       elsif ActiveRecord::Migrator.current_version > MAX_SUPPORTED_VERSION
         @prompt.warn 'Your version of the database schema is more recent than this script, this may cause unexpected errors.'
-        exit(1) unless @prompt.yes?('Continue anyway?')
+        exit(1) unless @prompt.yes?('Continue anyway? (Yes/No)')
+      end
+
+      if Sidekiq::ProcessSet.new.any?
+        @prompt.error 'It seems Sidekiq is running. All Mastodon processes need to be stopped when using this script.'
+        exit(1)
       end
 
       @prompt.warn 'This task will take a long time to run and is potentially destructive.'
       @prompt.warn 'Please make sure to stop Mastodon and have a backup.'
-      exit(1) unless @prompt.yes?('Continue?')
+      exit(1) unless @prompt.yes?('Continue? (Yes/No)')
 
-      deduplicate_accounts!
       deduplicate_users!
       deduplicate_account_domain_blocks!
       deduplicate_account_identity_proofs!
@@ -114,9 +171,11 @@ module Mastodon
       deduplicate_media_attachments!
       deduplicate_preview_cards!
       deduplicate_statuses!
+      deduplicate_accounts!
       deduplicate_tags!
       deduplicate_webauthn_credentials!
 
+      Scenic.database.refresh_materialized_view('instances', concurrently: true, cascade: false) if ActiveRecord::Migrator.current_version >= 2020_12_06_004238
       Rails.cache.clear
 
       @prompt.say 'Finished!'
@@ -145,6 +204,11 @@ module Mastodon
       else
         ActiveRecord::Base.connection.add_index :accounts, "lower (username), COALESCE(lower(domain), '')", name: 'index_accounts_on_username_and_domain_lower', unique: true
       end
+
+      @prompt.say 'Reindexing textual indexes on accounts…'
+      ActiveRecord::Base.connection.execute('REINDEX INDEX search_index;')
+      ActiveRecord::Base.connection.execute('REINDEX INDEX index_accounts_on_uri;')
+      ActiveRecord::Base.connection.execute('REINDEX INDEX index_accounts_on_url;')
     end
 
     def deduplicate_users!
@@ -178,12 +242,14 @@ module Mastodon
         end
       end
 
-      ActiveRecord::Base.connection.select_all("SELECT string_agg(id::text, ',') AS ids FROM users WHERE remember_token IS NOT NULL GROUP BY remember_token HAVING count(*) > 1").each do |row|
-        users = User.where(id: row['ids'].split(',')).sort_by(&:updated_at).reverse.drop(1)
-        @prompt.warn "Unsetting remember token for those accounts: #{users.map(&:account).map(&:acct).join(', ')}"
+      if ActiveRecord::Migrator.current_version < 20220118183010
+        ActiveRecord::Base.connection.select_all("SELECT string_agg(id::text, ',') AS ids FROM users WHERE remember_token IS NOT NULL GROUP BY remember_token HAVING count(*) > 1").each do |row|
+          users = User.where(id: row['ids'].split(',')).sort_by(&:updated_at).reverse.drop(1)
+          @prompt.warn "Unsetting remember token for those accounts: #{users.map(&:account).map(&:acct).join(', ')}"
 
-        users.each do |user|
-          user.update!(remember_token: nil)
+          users.each do |user|
+            user.update!(remember_token: nil)
+          end
         end
       end
 
@@ -199,7 +265,7 @@ module Mastodon
       @prompt.say 'Restoring users indexes…'
       ActiveRecord::Base.connection.add_index :users, ['confirmation_token'], name: 'index_users_on_confirmation_token', unique: true
       ActiveRecord::Base.connection.add_index :users, ['email'], name: 'index_users_on_email', unique: true
-      ActiveRecord::Base.connection.add_index :users, ['remember_token'], name: 'index_users_on_remember_token', unique: true
+      ActiveRecord::Base.connection.add_index :users, ['remember_token'], name: 'index_users_on_remember_token', unique: true if ActiveRecord::Migrator.current_version < 20220118183010
       ActiveRecord::Base.connection.add_index :users, ['reset_password_token'], name: 'index_users_on_reset_password_token', unique: true
     end
 
@@ -216,6 +282,8 @@ module Mastodon
     end
 
     def deduplicate_account_identity_proofs!
+      return unless ActiveRecord::Base.connection.table_exists?(:account_identity_proofs)
+
       remove_index_if_exists!(:account_identity_proofs, 'index_account_proofs_on_account_and_provider_and_username')
 
       @prompt.say 'Removing duplicate account identity proofs…'
@@ -417,6 +485,11 @@ module Mastodon
 
       @prompt.say 'Restoring tags indexes…'
       ActiveRecord::Base.connection.add_index :tags, 'lower((name)::text)', name: 'index_tags_on_name_lower', unique: true
+
+      if ActiveRecord::Base.connection.indexes(:tags).any? { |i| i.name == 'index_tags_on_name_lower_btree' }
+        @prompt.say 'Reindexing textual indexes on tags…'
+        ActiveRecord::Base.connection.execute('REINDEX INDEX index_tags_on_name_lower_btree;')
+      end
     end
 
     def deduplicate_webauthn_credentials!
@@ -476,45 +549,10 @@ module Mastodon
         if other_account.public_key == reference_account.public_key
           # The accounts definitely point to the same resource, so
           # it's safe to re-attribute content and relationships
-          merge_accounts!(reference_account, other_account)
+          reference_account.merge_with!(other_account)
         end
 
         other_account.destroy
-      end
-    end
-
-    def merge_accounts!(main_account, duplicate_account)
-      # Since it's the same remote resource, the remote resource likely
-      # already believes we are following/blocking, so it's safe to
-      # re-attribute the relationships too. However, during the presence
-      # of the index bug users could have *also* followed the reference
-      # account already, therefore mass update will not work and we need
-      # to check for (and skip past) uniqueness errors
-      owned_classes = [
-        Status, StatusPin, MediaAttachment, Poll, Report, Tombstone, Favourite,
-        Follow, FollowRequest, Block, Mute, AccountIdentityProof,
-        AccountModerationNote, AccountPin, AccountStat, ListAccount,
-        PollVote, Mention
-      ]
-      owned_classes.each do |klass|
-        klass.where(account_id: duplicate_account.id).find_each do |record|
-          begin
-            record.update_attribute(:account_id, main_account.id)
-          rescue ActiveRecord::RecordNotUnique
-            next
-          end
-        end
-      end
-
-      target_classes = [Follow, FollowRequest, Block, Mute, AccountModerationNote, AccountPin]
-      target_classes.each do |klass|
-        klass.where(target_account_id: duplicate_account.id).find_each do |record|
-          begin
-            record.update_attribute(:target_account_id, main_account.id)
-          rescue ActiveRecord::RecordNotUnique
-            next
-          end
-        end
       end
     end
 
