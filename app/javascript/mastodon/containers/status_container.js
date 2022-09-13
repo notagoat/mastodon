@@ -24,6 +24,7 @@ import {
   hideStatus,
   revealStatus,
   toggleStatusCollapse,
+  editStatus,
 } from '../actions/statuses';
 import {
   unmuteAccount,
@@ -33,6 +34,9 @@ import {
   blockDomain,
   unblockDomain,
 } from '../actions/domain_blocks';
+import {
+  initAddFilter,
+} from '../actions/filters';
 import { initMuteModal } from '../actions/mutes';
 import { initBlockModal } from '../actions/blocks';
 import { initBoostModal } from '../actions/boosts';
@@ -65,7 +69,7 @@ const makeMapStateToProps = () => {
   return mapStateToProps;
 };
 
-const mapDispatchToProps = (dispatch, { intl }) => ({
+const mapDispatchToProps = (dispatch, { intl, contextType }) => ({
 
   onReply (status, router) {
     dispatch((_, getState) => {
@@ -142,6 +146,10 @@ const mapDispatchToProps = (dispatch, { intl }) => ({
     }
   },
 
+  onEdit (status, history) {
+    dispatch(editStatus(status.get('id'), history));
+  },
+
   onDirect (account, router) {
     dispatch(directCompose(account, router));
   },
@@ -169,6 +177,10 @@ const mapDispatchToProps = (dispatch, { intl }) => ({
 
   onReport (status) {
     dispatch(initReport(status.get('account'), status));
+  },
+
+  onAddFilter (status) {
+    dispatch(initAddFilter(status, { contextType }));
   },
 
   onMute (account) {

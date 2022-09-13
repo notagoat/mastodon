@@ -26,7 +26,14 @@ import {
   directCompose,
 } from 'flavours/glitch/actions/compose';
 import { changeLocalSetting } from 'flavours/glitch/actions/local_settings';
-import { muteStatus, unmuteStatus, deleteStatus } from 'flavours/glitch/actions/statuses';
+import {
+  muteStatus,
+  unmuteStatus,
+  deleteStatus,
+  editStatus,
+  hideStatus,
+  revealStatus
+} from 'flavours/glitch/actions/statuses';
 import { initMuteModal } from 'flavours/glitch/actions/mutes';
 import { initBlockModal } from 'flavours/glitch/actions/blocks';
 import { initReport } from 'flavours/glitch/actions/reports';
@@ -215,11 +222,19 @@ class Status extends ImmutablePureComponent {
     return updated ? update : null;
   }
 
-  handleExpandedToggle = () => {
-    if (this.props.status.get('spoiler_text')) {
+  handleToggleHidden = () => {
+    const { status } = this.props;
+
+    if (this.props.settings.getIn(['content_warnings', 'shared_state'])) {
+      if (status.get('hidden')) {
+        this.props.dispatch(revealStatus(status.get('id')));
+      } else {
+        this.props.dispatch(hideStatus(status.get('id')));
+      }
+    } else if (this.props.status.get('spoiler_text')) {
       this.setExpansion(!this.state.isExpanded);
     }
-  };
+  }
 
   handleToggleMediaVisibility = () => {
     this.setState({ showMedia: !this.state.showMedia });
@@ -307,6 +322,10 @@ class Status extends ImmutablePureComponent {
     }
   }
 
+  handleEditClick = (status, history) => {
+    this.props.dispatch(editStatus(status.get('id'), history));
+  }
+
   handleDirectClick = (account, router) => {
     this.props.dispatch(directCompose(account, router));
   }
@@ -350,7 +369,19 @@ class Status extends ImmutablePureComponent {
   }
 
   handleToggleAll = () => {
-    const { isExpanded } = this.state;
+    const { status, ancestorsIds, descendantsIds, settings } = this.props;
+    const statusIds = [status.get('id')].concat(ancestorsIds.toJS(), descendantsIds.toJS());
+    let { isExpanded } = this.state;
+
+    if (settings.getIn(['content_warnings', 'shared_state']))
+      isExpanded = !status.get('hidden');
+
+    if (!isExpanded) {
+      this.props.dispatch(revealStatus(statusIds));
+    } else {
+      this.props.dispatch(hideStatus(statusIds));
+    }
+
     this.setState({ isExpanded: !isExpanded, threadExpanded: !isExpanded });
   }
 
@@ -509,9 +540,8 @@ class Status extends ImmutablePureComponent {
 
   render () {
     let ancestors, descendants;
-    const { setExpansion } = this;
     const { status, settings, ancestorsIds, descendantsIds, intl, domain, multiColumn, usingPiP } = this.props;
-    const { fullscreen, isExpanded } = this.state;
+    const { fullscreen } = this.state;
 
     if (status === null) {
       return (
@@ -521,6 +551,8 @@ class Status extends ImmutablePureComponent {
         </Column>
       );
     }
+
+    const isExpanded = settings.getIn(['content_warnings', 'shared_state']) ? !status.get('hidden') : this.state.isExpanded;
 
     if (ancestorsIds && ancestorsIds.size > 0) {
       ancestors = <div>{this.renderChildren(ancestorsIds)}</div>;
@@ -539,7 +571,7 @@ class Status extends ImmutablePureComponent {
       bookmark: this.handleHotkeyBookmark,
       mention: this.handleHotkeyMention,
       openProfile: this.handleHotkeyOpenProfile,
-      toggleSpoiler: this.handleExpandedToggle,
+      toggleSpoiler: this.handleToggleHidden,
       toggleSensitive: this.handleHotkeyToggleSensitive,
       openMedia: this.handleHotkeyOpenMedia,
     };
@@ -570,7 +602,7 @@ class Status extends ImmutablePureComponent {
                   onOpenVideo={this.handleOpenVideo}
                   onOpenMedia={this.handleOpenMedia}
                   expanded={isExpanded}
-                  onToggleHidden={this.handleExpandedToggle}
+                  onToggleHidden={this.handleToggleHidden}
                   domain={domain}
                   showMedia={this.state.showMedia}
                   onToggleMediaVisibility={this.handleToggleMediaVisibility}
@@ -585,6 +617,7 @@ class Status extends ImmutablePureComponent {
                   onReblog={this.handleReblogClick}
                   onBookmark={this.handleBookmarkClick}
                   onDelete={this.handleDeleteClick}
+                  onEdit={this.handleEditClick}
                   onDirect={this.handleDirectClick}
                   onMention={this.handleMentionClick}
                   onMute={this.handleMuteClick}

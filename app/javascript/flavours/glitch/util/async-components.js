@@ -173,3 +173,11 @@ export function Directory () {
 export function FollowRecommendations () {
   return import(/* webpackChunkName: "features/glitch/async/follow_recommendations" */'flavours/glitch/features/follow_recommendations');
 }
+
+export function CompareHistoryModal () {
+  return import(/*webpackChunkName: "flavours/glitch/async/compare_history_modal" */'flavours/glitch/features/ui/components/compare_history_modal');
+}
+
+export function FilterModal () {
+  return import(/*webpackChunkName: "flavours/glitch/async/filter_modal" */'flavours/glitch/features/ui/components/filter_modal');
+}

@@ -3,7 +3,7 @@ import ImmutablePropTypes from 'react-immutable-proptypes';
 import PropTypes from 'prop-types';
 import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
 import ImmutablePureComponent from 'react-immutable-pure-component';
-import { autoPlayGif, me, isStaff } from 'flavours/glitch/util/initial_state';
+import { autoPlayGif, me } from 'flavours/glitch/util/initial_state';
 import { preferencesLink, profileLink, accountAdminLink } from 'flavours/glitch/util/backend_links';
 import classNames from 'classnames';
 import Icon from 'flavours/glitch/components/icon';
@@ -13,6 +13,7 @@ import Button from 'flavours/glitch/components/button';
 import { NavLink } from 'react-router-dom';
 import DropdownMenuContainer from 'flavours/glitch/containers/dropdown_menu_container';
 import AccountNoteContainer from '../containers/account_note_container';
+import { PERMISSION_MANAGE_USERS } from 'flavours/glitch/permissions';
 
 const messages = defineMessages({
   unfollow: { id: 'account.unfollow', defaultMessage: 'Unfollow' },
@@ -37,7 +38,7 @@ const messages = defineMessages({
   showReblogs: { id: 'account.show_reblogs', defaultMessage: 'Show boosts from @{name}' },
   enableNotifications: { id: 'account.enable_notifications', defaultMessage: 'Notify me when @{name} posts' },
   disableNotifications: { id: 'account.disable_notifications', defaultMessage: 'Stop notifying me when @{name} posts' },
-  pins: { id: 'navigation_bar.pins', defaultMessage: 'Pinned toots' },
+  pins: { id: 'navigation_bar.pins', defaultMessage: 'Pinned posts' },
   preferences: { id: 'navigation_bar.preferences', defaultMessage: 'Preferences' },
   follow_requests: { id: 'navigation_bar.follow_requests', defaultMessage: 'Follow requests' },
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favourites' },
@@ -64,6 +65,10 @@ const dateFormatOptions = {
 export default @injectIntl
 class Header extends ImmutablePureComponent {
 
+  static contextTypes = {
+    identity: PropTypes.object,
+  };
+
   static propTypes = {
     account: ImmutablePropTypes.map,
     identity_props: ImmutablePropTypes.list,
@@ -82,6 +87,7 @@ class Header extends ImmutablePureComponent {
     onEditAccountNote: PropTypes.func.isRequired,
     intl: PropTypes.object.isRequired,
     domain: PropTypes.string.isRequired,
+    hidden: PropTypes.bool,
   };
 
   openEditProfile = () => {
@@ -115,7 +121,7 @@ class Header extends ImmutablePureComponent {
   }
 
   render () {
-    const { account, intl, domain, identity_proofs } = this.props;
+    const { account, hidden, intl, domain } = this.props;
 
     if (!account) {
       return null;
@@ -243,7 +249,7 @@ class Header extends ImmutablePureComponent {
       }
     }
 
-    if (account.get('id') !== me && isStaff && accountAdminLink) {
+    if (account.get('id') !== me && (this.context.identity.permissions & PERMISSION_MANAGE_USERS) === PERMISSION_MANAGE_USERS && accountAdminLink) {
       menu.push(null);
       menu.push({ text: intl.formatMessage(messages.admin_account, { name: account.get('username') }), href: accountAdminLink(account.get('id')) });
     }
@@ -270,23 +276,29 @@ class Header extends ImmutablePureComponent {
             {info}
           </div>
 
-          <img src={autoPlayGif ? account.get('header') : account.get('header_static')} alt='' className='parallax' />
+          {!(suspended || hidden) && <img src={autoPlayGif ? account.get('header') : account.get('header_static')} alt='' className='parallax' />}
         </div>
 
         <div className='account__header__bar'>
           <div className='account__header__tabs'>
             <a className='avatar' href={account.get('url')} rel='noopener noreferrer' target='_blank'>
-              <Avatar account={account} size={90} />
+              <Avatar account={suspended || hidden ? undefined : account} size={90} />
             </a>
 
             <div className='spacer' />
 
-            <div className='account__header__tabs__buttons'>
-              {actionBtn}
-              {bellBtn}
+            {!suspended && (
+              <div className='account__header__tabs__buttons'>
+                {!hidden && (
+                  <React.Fragment>
+                    {actionBtn}
+                    {bellBtn}
+                  </React.Fragment>
+                )}
 
-              <DropdownMenuContainer items={menu} icon='ellipsis-v' size={24} direction='right' />
-            </div>
+                <DropdownMenuContainer items={menu} icon='ellipsis-v' size={24} direction='right' />
+              </div>
+            )}
           </div>
 
           <div className='account__header__tabs__name'>
@@ -298,23 +310,11 @@ class Header extends ImmutablePureComponent {
 
           <AccountNoteContainer account={account} />
 
-          {!suspended && (
+          {!(suspended || hidden) && (
             <div className='account__header__extra'>
               <div className='account__header__bio'>
-                { (fields.size > 0 || identity_proofs.size > 0) && (
+                { fields.size > 0 && (
                   <div className='account__header__fields'>
-                    {identity_proofs.map((proof, i) => (
-                      <dl key={i}>
-                        <dt dangerouslySetInnerHTML={{ __html: proof.get('provider') }} className='translate' />
-
-                        <dd className='verified'>
-                          <a href={proof.get('proof_url')} target='_blank' rel='noopener noreferrer'><span title={intl.formatMessage(messages.linkVerifiedOn, { date: intl.formatDate(proof.get('updated_at'), dateFormatOptions) })}>
-                            <Icon id='check' className='verified__mark' />
-                          </span></a>
-                          <a href={proof.get('profile_url')} target='_blank' rel='noopener noreferrer'><span dangerouslySetInnerHTML={{ __html: ' '+proof.get('provider_username') }} className='translate' /></a>
-                        </dd>
-                      </dl>
-                    ))}
                     {fields.map((pair, i) => (
                       <dl key={i}>
                         <dt dangerouslySetInnerHTML={{ __html: pair.get('name_emojified') }} title={pair.get('name')} />
