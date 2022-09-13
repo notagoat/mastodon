@@ -3,6 +3,8 @@
 class ActivityPub::ProcessAccountService < BaseService
   include JsonLdHelper
   include DomainControlHelper
+  include Redisable
+  include Lockable
 
   # Should be called with confirmed valid JSON
   # and WebFinger-resolved username and domain
@@ -16,22 +18,18 @@ class ActivityPub::ProcessAccountService < BaseService
     @domain      = domain
     @collections = {}
 
-    RedisLock.acquire(lock_options) do |lock|
-      if lock.acquired?
-        @account            = Account.remote.find_by(uri: @uri) if @options[:only_key]
-        @account          ||= Account.find_remote(@username, @domain)
-        @old_public_key     = @account&.public_key
-        @old_protocol       = @account&.protocol
-        @suspension_changed = false
+    with_lock("process_account:#{@uri}") do
+      @account            = Account.remote.find_by(uri: @uri) if @options[:only_key]
+      @account          ||= Account.find_remote(@username, @domain)
+      @old_public_key     = @account&.public_key
+      @old_protocol       = @account&.protocol
+      @suspension_changed = false
 
-        create_account if @account.nil?
-        update_account
-        process_tags
+      create_account if @account.nil?
+      update_account
+      process_tags
 
-        process_duplicate_accounts! if @options[:verified_webfinger]
-      else
-        raise Mastodon::RaceConditionError
-      end
+      process_duplicate_accounts! if @options[:verified_webfinger]
     end
 
     return if @account.nil?
@@ -107,11 +105,13 @@ class ActivityPub::ProcessAccountService < BaseService
   def set_fetchable_attributes!
     begin
       @account.avatar_remote_url = image_url('icon') || '' unless skip_download?
+      @account.avatar = nil if @account.avatar_remote_url.blank?
     rescue Mastodon::UnexpectedResponseError, HTTP::TimeoutError, HTTP::ConnectionError, OpenSSL::SSL::SSLError
       RedownloadAvatarWorker.perform_in(rand(30..600).seconds, @account.id)
     end
     begin
       @account.header_remote_url = image_url('image') || '' unless skip_download?
+      @account.header = nil if @account.header_remote_url.blank?
     rescue Mastodon::UnexpectedResponseError, HTTP::TimeoutError, HTTP::ConnectionError, OpenSSL::SSL::SSLError
       RedownloadHeaderWorker.perform_in(rand(30..600).seconds, @account.id)
     end
@@ -286,10 +286,6 @@ class ActivityPub::ProcessAccountService < BaseService
 
   def protocol_changed?
     !@old_protocol.nil? && @old_protocol != @account.protocol
-  end
-
-  def lock_options
-    { redis: Redis.current, key: "process_account:#{@uri}", autorelease: 15.minutes.seconds }
   end
 
   def process_tags

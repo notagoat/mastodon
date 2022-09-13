@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class FanOutOnWriteService < BaseService
+  include Redisable
+
   # Push a status into home and mentions feeds
   # @param [Status] status
   # @param [Hash] options
@@ -14,6 +16,7 @@ class FanOutOnWriteService < BaseService
     check_race_condition!
 
     fan_out_to_local_recipients!
+    fan_out_to_public_recipients! if broadcastable?
     fan_out_to_public_streams! if broadcastable?
   end
 
@@ -34,6 +37,7 @@ class FanOutOnWriteService < BaseService
   def fan_out_to_local_recipients!
     deliver_to_self!
     notify_mentioned_accounts!
+    notify_about_update! if update?
 
     case @status.visibility.to_sym
     when :public, :unlisted, :private
@@ -46,6 +50,10 @@ class FanOutOnWriteService < BaseService
       deliver_to_conversation!
       deliver_to_direct_timelines!
     end
+  end
+
+  def fan_out_to_public_recipients!
+    deliver_to_hashtag_followers!
   end
 
   def fan_out_to_public_streams!
@@ -66,10 +74,26 @@ class FanOutOnWriteService < BaseService
     end
   end
 
+  def notify_about_update!
+    @status.reblogged_by_accounts.merge(Account.local).select(:id).reorder(nil).find_in_batches do |accounts|
+      LocalNotificationWorker.push_bulk(accounts) do |account|
+        [account.id, @status.id, 'Status', 'update']
+      end
+    end
+  end
+
   def deliver_to_all_followers!
     @account.followers_for_local_distribution.select(:id).reorder(nil).find_in_batches do |followers|
       FeedInsertWorker.push_bulk(followers) do |follower|
         [@status.id, follower.id, 'home', { 'update' => update? }]
+      end
+    end
+  end
+
+  def deliver_to_hashtag_followers!
+    TagFollow.where(tag_id: @status.tags.map(&:id)).select(:id, :account_id).reorder(nil).find_in_batches do |follows|
+      FeedInsertWorker.push_bulk(follows) do |follow|
+        [@status.id, follow.account_id, 'tags', { 'update' => update? }]
       end
     end
   end
@@ -97,21 +121,21 @@ class FanOutOnWriteService < BaseService
   end
 
   def broadcast_to_hashtag_streams!
-    @status.tags.pluck(:name).each do |hashtag|
-      Redis.current.publish("timeline:hashtag:#{hashtag.mb_chars.downcase}", anonymous_payload)
-      Redis.current.publish("timeline:hashtag:#{hashtag.mb_chars.downcase}:local", anonymous_payload) if @status.local?
+    @status.tags.map(&:name).each do |hashtag|
+      redis.publish("timeline:hashtag:#{hashtag.mb_chars.downcase}", anonymous_payload)
+      redis.publish("timeline:hashtag:#{hashtag.mb_chars.downcase}:local", anonymous_payload) if @status.local?
     end
   end
 
   def broadcast_to_public_streams!
     return if @status.reply? && @status.in_reply_to_account_id != @account.id && !Setting.show_replies_in_public_timelines
 
-    Redis.current.publish('timeline:public', anonymous_payload)
-    Redis.current.publish(@status.local? ? 'timeline:public:local' : 'timeline:public:remote', anonymous_payload)
+    redis.publish('timeline:public', anonymous_payload)
+    redis.publish(@status.local? ? 'timeline:public:local' : 'timeline:public:remote', anonymous_payload)
 
-    if @status.media_attachments.any?
-      Redis.current.publish('timeline:public:media', anonymous_payload)
-      Redis.current.publish(@status.local? ? 'timeline:public:local:media' : 'timeline:public:remote:media', anonymous_payload)
+    if @status.with_media?
+      redis.publish('timeline:public:media', anonymous_payload)
+      redis.publish(@status.local? ? 'timeline:public:local:media' : 'timeline:public:remote:media', anonymous_payload)
     end
   end
 

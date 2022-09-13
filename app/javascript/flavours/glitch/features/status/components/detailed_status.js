@@ -7,7 +7,7 @@ import StatusContent from 'flavours/glitch/components/status_content';
 import MediaGallery from 'flavours/glitch/components/media_gallery';
 import AttachmentList from 'flavours/glitch/components/attachment_list';
 import { Link } from 'react-router-dom';
-import { injectIntl, FormattedDate, FormattedMessage } from 'react-intl';
+import { injectIntl, FormattedDate } from 'react-intl';
 import Card from './card';
 import ImmutablePureComponent from 'react-immutable-pure-component';
 import Video from 'flavours/glitch/features/video';
@@ -19,6 +19,7 @@ import PollContainer from 'flavours/glitch/containers/poll_container';
 import Icon from 'flavours/glitch/components/icon';
 import AnimatedNumber from 'flavours/glitch/components/animated_number';
 import PictureInPicturePlaceholder from 'flavours/glitch/components/picture_in_picture_placeholder';
+import EditedTimestamp from 'flavours/glitch/components/edited_timestamp';
 
 export default @injectIntl
 class DetailedStatus extends ImmutablePureComponent {
@@ -121,22 +122,31 @@ class DetailedStatus extends ImmutablePureComponent {
       return null;
     }
 
-    let media           = [];
-    let mediaIcons      = [];
     let applicationLink = '';
     let reblogLink = '';
     let reblogIcon = 'retweet';
     let favouriteLink = '';
     let edited = '';
 
+    //  Depending on user settings, some media are considered as parts of the
+    //  contents (affected by CW) while other will be displayed outside of the
+    //  CW.
+    let contentMedia = [];
+    let contentMediaIcons = [];
+    let extraMedia = [];
+    let extraMediaIcons = [];
+    let media = contentMedia;
+    let mediaIcons = contentMediaIcons;
+
+    if (settings.getIn(['content_warnings', 'media_outside'])) {
+      media = extraMedia;
+      mediaIcons = extraMediaIcons;
+    }
+
     if (this.props.measureHeight) {
       outerStyle.height = `${this.state.height}px`;
     }
 
-    if (status.get('poll')) {
-      media.push(<PollContainer pollId={status.get('poll')} />);
-      mediaIcons.push('tasks');
-    }
     if (usingPiP) {
       media.push(<PictureInPicturePlaceholder />);
       mediaIcons.push('video-camera');
@@ -155,7 +165,11 @@ class DetailedStatus extends ImmutablePureComponent {
             backgroundColor={attachment.getIn(['meta', 'colors', 'background'])}
             foregroundColor={attachment.getIn(['meta', 'colors', 'foreground'])}
             accentColor={attachment.getIn(['meta', 'colors', 'accent'])}
+            sensitive={status.get('sensitive')}
+            visible={this.props.showMedia}
+            blurhash={attachment.get('blurhash')}
             height={150}
+            onToggleVisibility={this.props.onToggleMediaVisibility}
           />,
         );
         mediaIcons.push('music');
@@ -199,6 +213,11 @@ class DetailedStatus extends ImmutablePureComponent {
     } else if (status.get('card')) {
       media.push(<Card sensitive={status.get('sensitive')} onOpenMedia={this.props.onOpenMedia} card={status.get('card')} />);
       mediaIcons.push('link');
+    }
+
+    if (status.get('poll')) {
+      contentMedia.push(<PollContainer pollId={status.get('poll')} />);
+      contentMediaIcons.push('tasks');
     }
 
     if (status.get('application')) {
@@ -265,7 +284,7 @@ class DetailedStatus extends ImmutablePureComponent {
       edited = (
         <React.Fragment>
           <React.Fragment> · </React.Fragment>
-          <FormattedMessage id='status.edited' defaultMessage='Edited {date}' values={{ date: intl.formatDate(status.get('edited_at'), { hour12: false, month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }} />
+          <EditedTimestamp statusId={status.get('id')} timestamp={status.get('edited_at')} />
         </React.Fragment>
       );
     }
@@ -280,8 +299,9 @@ class DetailedStatus extends ImmutablePureComponent {
 
           <StatusContent
             status={status}
-            media={media}
-            mediaIcons={mediaIcons}
+            media={contentMedia}
+            extraMedia={extraMedia}
+            mediaIcons={contentMediaIcons}
             expanded={expanded}
             collapsed={false}
             onExpandedToggle={onToggleHidden}

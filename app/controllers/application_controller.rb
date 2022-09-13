@@ -58,14 +58,6 @@ class ApplicationController < ActionController::Base
     store_location_for(:user, request.url) unless [:json, :rss].include?(request.format&.to_sym)
   end
 
-  def require_admin!
-    forbidden unless current_user&.admin?
-  end
-
-  def require_staff!
-    forbidden unless current_user&.staff?
-  end
-
   def require_functional!
     redirect_to edit_user_registration_path unless current_user.functional?
   end
@@ -134,16 +126,6 @@ class ApplicationController < ActionController::Base
     return @current_session if defined?(@current_session)
 
     @current_session = SessionActivation.find_by(session_id: cookies.signed['_session_id']) if cookies.signed['_session_id'].present?
-  end
-
-  def current_flavour
-    return Setting.flavour unless Themes.instance.flavours.include? current_user&.setting_flavour
-    current_user.setting_flavour
-  end
-
-  def current_skin
-    return Setting.skin unless Themes.instance.skins_for(current_flavour).include? current_user&.setting_skin
-    current_user.setting_skin
   end
 
   def respond_with_error(code)
