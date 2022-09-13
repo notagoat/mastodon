@@ -85,7 +85,7 @@ class MediaAttachment < ApplicationRecord
         'c:v' => 'h264',
         'maxrate' => '1300K',
         'bufsize' => '1300K',
-        'frames:v' => 60 * 60 * 3,
+        'frames:v' => 60 * 20 * 300, 
         'crf' => 18,
         'map_metadata' => '-1',
       }.freeze,
@@ -153,7 +153,7 @@ class MediaAttachment < ApplicationRecord
   }.freeze
 
   IMAGE_LIMIT = (ENV['MAX_IMAGE_SIZE'] || 1000.megabytes).to_i
-  VIDEO_LIMIT = (ENV['MAX_VIDEO_SIZE'] || 4000.megabytes).to_i
+  VIDEO_LIMIT = (ENV['MAX_VIDEO_SIZE'] || 1000.megabytes).to_i
 
   MAX_VIDEO_MATRIX_LIMIT = 2_304_000 # 1920x1200px
   MAX_VIDEO_FRAME_RATE   = 60
