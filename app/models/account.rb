@@ -86,6 +86,7 @@ class Account < ApplicationRecord
     untrusted: 0,
     trusted: 1,
   }.freeze
+  DEFAULT_FIELDS_SIZE = (ENV['MAX_PROFILE_FIELDS'] || 100).to_i
 
   enum protocol: [:ostatus, :activitypub]
   enum suspension_origin: [:local, :remote], _prefix: true
