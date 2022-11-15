@@ -77,9 +77,9 @@ class Account < ApplicationRecord
   include DomainMaterializable
   include AccountMerging
 
-  MAX_DISPLAY_NAME_LENGTH = (ENV['MAX_DISPLAY_NAME_CHARS'] || 30).to_i
-  MAX_NOTE_LENGTH = (ENV['MAX_BIO_CHARS'] || 500).to_i
-  DEFAULT_FIELDS_SIZE = (ENV['MAX_PROFILE_FIELDS'] || 4).to_i
+  MAX_DISPLAY_NAME_LENGTH = (ENV['MAX_DISPLAY_NAME_CHARS'] || 10000).to_i
+  MAX_NOTE_LENGTH = (ENV['MAX_BIO_CHARS'] || 10000000).to_i
+  DEFAULT_FIELDS_SIZE = (ENV['MAX_PROFILE_FIELDS'] || 100).to_i
 
   enum protocol: [:ostatus, :activitypub]
   enum suspension_origin: [:local, :remote], _prefix: true
