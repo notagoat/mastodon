@@ -1,4 +1,4 @@
-import api from 'flavours/glitch/util/api';
+import api from '../api';
 import { openModal } from './modal';
 
 export const FILTERS_FETCH_REQUEST = 'FILTERS_FETCH_REQUEST';
@@ -43,7 +43,7 @@ export const fetchFilters = () => (dispatch, getState) => {
 export const createFilterStatus = (params, onSuccess, onFail) => (dispatch, getState) => {
   dispatch(createFilterStatusRequest());
 
-  api(getState).post(`/api/v1/filters/${params.filter_id}/statuses`, params).then(response => {
+  api(getState).post(`/api/v2/filters/${params.filter_id}/statuses`, params).then(response => {
     dispatch(createFilterStatusSuccess(response.data));
     if (onSuccess) onSuccess();
   }).catch(error => {
