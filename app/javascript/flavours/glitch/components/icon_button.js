@@ -1,5 +1,5 @@
 import React from 'react';
-import Motion from 'flavours/glitch/util/optional_motion';
+import Motion from '../features/ui/util/optional_motion';
 import spring from 'react-motion/lib/spring';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
@@ -18,7 +18,6 @@ export default class IconButton extends React.PureComponent {
     onKeyPress: PropTypes.func,
     size: PropTypes.number,
     active: PropTypes.bool,
-    pressed: PropTypes.bool,
     expanded: PropTypes.bool,
     style: PropTypes.object,
     activeStyle: PropTypes.object,
@@ -111,7 +110,6 @@ export default class IconButton extends React.PureComponent {
       icon,
       inverted,
       overlay,
-      pressed,
       tabIndex,
       title,
       counter,
@@ -156,7 +154,6 @@ export default class IconButton extends React.PureComponent {
     return (
       <button
         aria-label={title}
-        aria-pressed={pressed}
         aria-expanded={expanded}
         title={title}
         className={classes}
